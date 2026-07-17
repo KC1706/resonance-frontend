@@ -1,0 +1,12 @@
+/* Tailwind utilities WITHOUT preflight — the prototype's own base styles govern
+   the look (preflight would strip list markers, reset headings, etc. and change
+   the design). Utilities stay available for layout where handy. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* The Industry design system — source of truth for the look. */
+@import "./styles/industry.css";
+
+html, body { height: 100%; }
+#root { min-height: 100%; }
