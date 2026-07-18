@@ -6,6 +6,7 @@
 - **How the tools work** → `ENGINEERING_CONVENTIONS.md`
 - **What/when to build** → this doc
 - **What it looks like** → `DESIGN_SYSTEM.md`
+- **What's new this phase (auth, persistence, calendar, chat, opportunities)** → `V2_Platform_Plan.md`
 
 ## The method
 
@@ -34,12 +35,20 @@ Thread 7   Student depth: Sessions · Check-in · Progress · Resources  ✅ don
 Thread 8   Oversight: Overview + Cohort trends (institution tier)     ✗ removed — scope narrowed to Counsellor + Student
 Thread 9   Oversight: Triage · load · supervision (cell tier)         ✗ removed — scope narrowed to Counsellor + Student
 Thread 10  Commercial: Conversation warehouse               ✗ removed — scope narrowed to Counsellor + Student
-Thread 11  Auth · onboarding · real data layer              ▢ next
+Thread 11  Auth · localStorage data layer · relative dates  ▢ next
+Thread 12  Calendar & appointments (counsellor + student)   ▢ planned
+Thread 13  Messages (chat, counsellor ⇄ student)             ▢ planned
+Thread 14  Student Opportunities (second vertical)           ▢ planned
+Thread 15  Cockpit two-path (known vs no-history student)    ▢ planned
+           + counsellor caseload-rollup widget on Home
 ```
 
 Oversight and Commercial personas have been removed from the app for now (see
 `AppData`/`AppDataProvider` in `src/context/AppDataContext.tsx` for the current
 data-layer shape). `docs/Oversight_Dashboard_Feature_Design.md` has been retired.
+The caseload-rollup widget added in Thread 15 is scoped to one counsellor's own
+book of students — it is not a revival of Oversight (no cross-counsellor or
+institution view). Full rationale for all five new threads: `V2_Platform_Plan.md`.
 
 ## What each thread delivered
 
@@ -67,14 +76,57 @@ data-layer shape). `docs/Oversight_Dashboard_Feature_Design.md` has been retired
 - **7 · Student depth** — Sessions, Check-in & journal, My progress (strengths only),
   Resources.
 
-## Thread 11 — Auth, onboarding & real data (next)
+## Thread 11 — Auth · localStorage data layer · relative dates (next)
 
-Deferred on purpose (demo-first). Sign-in shell with SSO + pre-login crisis link;
-student **consent-before-content** gate; counsellor setup checklist → practice
-session; role-scoped routing + MFA for identified-data roles. Then replace
-`src/data/` with an API client (loading/empty/error states) behind the existing
-`AppDataProvider` seam, and the safety fallback: any error on a user-facing safety
-path degrades to the human contact card.
+No backend yet, but login becomes real: seeded dummy accounts (counsellor +
+student), a route guard, student self-signup landing "unassigned" until
+matched, pre-login crisis link preserved. `src/data/` moves from static
+arrays to a localStorage-backed store keyed by entity (`users`,
+`counsellors`, `students`, `sessions`) behind the existing `AppDataProvider`
+seam — screens keep calling `useAppData()` unchanged. Every mock date
+(`"25 Mar"`, `"3w ago"`) becomes a real timestamp computed relative to the
+current date at seed time, with display strings derived at render time. See
+`V2_Platform_Plan.md` §2–3 for the full data model.
+
+## Thread 12 — Calendar & appointments
+
+Counsellor week-view calendar (availability blocks + accepted appointments +
+pending-request queue, also surfaced as a Home action item). Student books
+against it from the existing "My sessions" screen (no new student nav item).
+`appointments` entity with a `mode` field that already anticipates a future
+Twilio `call` mode. See `V2_Platform_Plan.md` §6.
+
+## Thread 13 — Messages (chat)
+
+One persistent thread per assigned student↔counsellor pair, new "Messages"
+nav item on both sides, available independent of any booked appointment.
+Explicitly outside the facet pipeline — plain chat, never analyzed. See
+`V2_Platform_Plan.md` §7.
+
+## Thread 14 — Student Opportunities (second vertical)
+
+New "Opportunities" nav item: student profile gains skills/domain/education
+fields; a tagged internship/job/hackathon list; a transparent overlap-score
+match (not a black-box "AI match" claim). Data-separate from counselling —
+never reads facet/wellness data. See `V2_Platform_Plan.md` §8.
+
+## Thread 15 — Cockpit two-path + caseload rollup
+
+Cockpit reads `hasHistory` at session start: known-student path shows
+baseline deltas and a personalized avoid-list; no-history path runs
+cold-start and says so plainly ("first session · building baseline").
+Home's stat tiles and Caseload's sort/filter read one named
+counsellor-caseload rollup instead of separately-hardcoded numbers — scoped
+to one counsellor's own book, not an Oversight revival. See
+`V2_Platform_Plan.md` §4–5.
+
+## Thread 16 — Real API layer (later)
+
+Deferred again behind this phase. Replace the localStorage store with an API
+client (loading/empty/error states) behind the same `AppDataProvider` seam;
+add the full SSO/MFA/SCIM auth from `Login_Onboarding_Feature_Design.md`; the
+safety fallback (any error on a user-facing safety path degrades to the human
+contact card) applies throughout.
 
 ## Ground rules (carried from `ENGINEERING_CONVENTIONS.md`)
 

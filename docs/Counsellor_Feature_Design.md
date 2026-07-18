@@ -2,6 +2,12 @@
 
 *Companion to the product plan. This is the full feature design for the **counsellor** role: every screen, what each feature does, its states and interactions, edge cases, and how the facet engine feeds it. Wireframes for the Live Cockpit, Home/Today, and Student Profile are in the chat.*
 
+> **Build-phase additions:** this phase adds two new counsellor screens not
+> covered below — **Calendar & Appointments** and **Messages** — plus a
+> known-vs-no-history split inside the Live Cockpit and a named
+> caseload-rollup aggregate feeding Home's stat tiles. See
+> `V2_Platform_Plan.md` §4–7 for all four; nothing below changes.
+
 ---
 
 ## Design principles for the counsellor role

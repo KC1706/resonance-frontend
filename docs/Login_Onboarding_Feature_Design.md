@@ -2,6 +2,12 @@
 
 *Companion to the product plan and the counsellor / student / oversight specs. Covers authentication, access, and first-run onboarding for every persona. Wireframes (sign-in, student consent step, counsellor setup checklist) are in the chat.*
 
+> **Build-phase note:** this doc describes the target state (institution SSO,
+> SCIM, MFA). The current no-backend build phase uses seeded dummy
+> email/password accounts in `localStorage` instead — a real gate, just not
+> this identity provider yet. See `V2_Platform_Plan.md` §2 for what's
+> actually being built now; everything below remains the destination.
+
 > Two ideas govern this whole flow. **(1) Access follows responsibility** — students get warmth and low friction; anyone who can see identified data (counsellor, head of cell, admin) passes a stronger security bar. **(2) For students, consent comes before content** — the first run routes through data control before the product does anything else.
 
 ---

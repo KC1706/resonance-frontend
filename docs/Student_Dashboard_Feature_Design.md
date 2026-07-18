@@ -2,6 +2,16 @@
 
 *Companion to the product plan and counsellor spec. This is the full feature design for the **student (subject)** role. Wireframe of the student home is in the chat.*
 
+> **Build-phase additions:** this phase adds two new student screens not
+> covered below — **Messages** (chat with the assigned counsellor, always
+> available, never analyzed) and **Opportunities** (internships/jobs/
+> hackathons matched from skills/domain — the platform's second business
+> vertical, data-separate from anything counselling-related) — plus real
+> appointment booking against the counsellor's calendar inside "My
+> sessions." See `V2_Platform_Plan.md` §6–8 for all three; nothing below
+> changes, and the hard rule that the student never sees scores/wellness
+> data applies to the new screens too.
+
 > The student is the *subject* of the analysis and usually a young adult. This dashboard is therefore governed by a different logic than the counsellor's: it exists for **agency, transparency, and access to help — not measurement**. The student is never shown a "distress score."
 
 ---
