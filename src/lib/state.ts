@@ -30,3 +30,17 @@ export function tierStyle(tier: Tier): { background: string; color: string } {
   if (tier === "medium") return { background: state.watch.bg, color: state.watch.fg };
   return { background: "var(--color-accent-100)", color: "var(--color-accent-800)" };
 }
+
+/** Plain-language tier label for a compact chip — "high risk" reads clinical and alarming out of context. */
+export function tierChipLabel(tier: Tier): string {
+  if (tier === "high") return "Priority";
+  if (tier === "medium") return "Watching";
+  return "Steady";
+}
+
+/** The fuller phrase, for prose ("currently a Priority student" reads oddly — use this instead). */
+export function tierProseLabel(tier: Tier): string {
+  if (tier === "high") return "needs attention soon";
+  if (tier === "medium") return "being watched closely";
+  return "doing okay";
+}
