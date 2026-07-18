@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import { Blueprint, Kicker } from "@/components/Blueprint";
 import { formatClock, formatWeekdayDate } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
+import { useDialog } from "@/context/DialogContext";
 import {
   getWeekSlots, getStudentName, acceptAppointment, declineAppointment,
   cancelConfirmedAppointment, addAvailabilitySlot, removeAvailabilitySlot,
@@ -23,6 +24,7 @@ export function Calendar() {
   const [addingFor, setAddingFor] = useState<string | null>(null);
   const [newTime, setNewTime] = useState("09:00");
   const navigate = useNavigate();
+  const dialog = useDialog();
 
   if (!identity.recordId) return null;
   const counsellorId = identity.recordId;
@@ -40,29 +42,37 @@ export function Calendar() {
     navigate("/counsellor/messages", { state: { studentId } });
   }
 
-  function handleAccept(id: string) {
-    if (!window.confirm("Accept this student's request? This will confirm the session and decline any other requests for the same time.")) return;
+  async function handleAccept(id: string) {
+    const ok = await dialog.confirm(
+      "This will confirm the session and decline any other requests for the same time.",
+      { title: "Accept this request?", confirmLabel: "Accept" },
+    );
+    if (!ok) return;
     acceptAppointment(id);
     refresh();
   }
 
-  function handleDecline(id: string) {
-    const reason = window.prompt("Reason for declining this request?");
+  async function handleDecline(id: string) {
+    const reason = await dialog.prompt("This is sent to the student as the reason their request wasn't accepted.", {
+      title: "Decline this request", placeholder: "Reason for declining…", confirmLabel: "Decline",
+    });
     if (!reason) return;
     declineAppointment(id, reason);
     refresh();
   }
 
-  function handleCancelConfirmed(id: string) {
-    const reason = window.prompt("Reason for cancelling this confirmed session?");
+  async function handleCancelConfirmed(id: string) {
+    const reason = await dialog.prompt("This is sent to the student as the reason the session was cancelled.", {
+      title: "Cancel this confirmed session", placeholder: "Reason for cancelling…", confirmLabel: "Cancel session", destructive: true,
+    });
     if (!reason) return;
     cancelConfirmedAppointment(id, reason, "counsellor");
     refresh();
   }
 
-  function handleRemoveSlot(id: string) {
+  async function handleRemoveSlot(id: string) {
     const result = removeAvailabilitySlot(id);
-    if ("error" in result) window.alert(result.error);
+    if ("error" in result) await dialog.alert(result.error, { title: "Can't remove this slot" });
     refresh();
   }
 

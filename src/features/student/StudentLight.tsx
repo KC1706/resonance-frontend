@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
 import { useAppData } from "@/context/AppDataContext";
+import { useDialog } from "@/context/DialogContext";
 import {
   getWeekSlots, requestAppointment, withdrawRequest, cancelConfirmedAppointment, listAppointmentsForStudent,
 } from "@/data/db";
@@ -16,6 +17,7 @@ const apptTag = (status: string) => {
 export function StudentSessions() {
   const { identity } = useAppData();
   const [, forceRerender] = useState(0);
+  const dialog = useDialog();
 
   if (!identity.assignedCounsellorId || !identity.recordId) {
     return (
@@ -34,19 +36,26 @@ export function StudentSessions() {
   const days = getWeekSlots(identity.assignedCounsellorId);
   const alreadyRequestedTimes = new Set(myAppointments.map((a) => a.startIso));
 
-  function book(startIso: string) {
-    if (!window.confirm(`Request ${formatWeekdayDate(new Date(startIso))} at ${formatClock(new Date(startIso))}?`)) return;
+  async function book(startIso: string) {
+    const ok = await dialog.confirm(
+      `${formatWeekdayDate(new Date(startIso))} at ${formatClock(new Date(startIso))}`,
+      { title: "Request this time?", confirmLabel: "Request" },
+    );
+    if (!ok) return;
     requestAppointment(identity.recordId!, identity.assignedCounsellorId!, startIso);
     forceRerender((n) => n + 1);
   }
 
-  function cancel(id: string, status: string) {
+  async function cancel(id: string, status: string) {
     if (status === "accepted") {
-      const reason = window.prompt("Reason for cancelling this confirmed session?");
+      const reason = await dialog.prompt("This is sent to your counsellor as the reason.", {
+        title: "Cancel this confirmed session", placeholder: "Reason for cancelling…", confirmLabel: "Cancel session", destructive: true,
+      });
       if (!reason) return;
       cancelConfirmedAppointment(id, reason, "student");
     } else {
-      if (!window.confirm("Withdraw this request?")) return;
+      const ok = await dialog.confirm("You can request another time any time.", { title: "Withdraw this request?", confirmLabel: "Withdraw" });
+      if (!ok) return;
       withdrawRequest(id);
     }
     forceRerender((n) => n + 1);
