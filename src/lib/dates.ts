@@ -70,3 +70,11 @@ export function formatDayDivider(d: Date, from: Date = new Date()): string {
   if (isSameDay(d, daysAgo(1, from))) return "Yesterday";
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+/** "10:30" today, "Thu" this week, "25 Mar" further out — the caseload/schedule "next" column. */
+export function formatUpcoming(d: Date, from: Date = new Date()): string {
+  if (isSameDay(d, from)) return formatClock(d);
+  const diffDays = Math.round((d.getTime() - from.getTime()) / DAY_MS);
+  if (diffDays > 0 && diffDays < 7) return WEEKDAYS[d.getDay()].slice(0, 3);
+  return formatShortDate(d);
+}

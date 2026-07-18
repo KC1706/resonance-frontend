@@ -115,7 +115,7 @@ export function Login() {
             <div className="text-muted" style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>
               Quick demo login
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto", paddingRight: 2 }}>
               {demoAccounts.map((a) => (
                 <button key={a.id} type="button" className="btn btn-secondary" style={{ justifyContent: "flex-start" }} onClick={() => quickLogin(a.email)}>
                   {a.name} <span className="text-muted" style={{ marginLeft: 6, fontSize: 11.5 }}>· {a.role}</span>

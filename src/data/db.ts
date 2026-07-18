@@ -5,7 +5,8 @@
  * directly — only through this module and AuthContext/AppDataContext.
  */
 import { readJSON, writeJSON } from "@/lib/storage";
-import { daysAgo } from "@/lib/dates";
+import { daysAgo, isSameDay } from "@/lib/dates";
+import type { Tier } from "@/lib/state";
 
 export type Role = "counsellor" | "student";
 
@@ -24,14 +25,23 @@ export interface CounsellorRecord {
   title: string; // e.g. "Wellness Cell · IIT KGP"
 }
 
+/** The counsellor-facing risk read — authored demo content standing in for the facet engine's real output. */
+export interface CaseNote {
+  tier: Tier;
+  wellnessIndex: number;
+  trendDelta: number; // signed, e.g. -17 or +4
+  reason: string;
+}
+
 export interface StudentRecord {
   id: string;
   userId: string;
-  code: string; // e.g. "A-238", matches the existing caseload/session mocks
+  code: string; // e.g. "A-238"
   dept: string;
   assignedCounsellorId: string | null;
   skills: string[];
   domains: string[];
+  caseNote: CaseNote;
 }
 
 export type AppointmentStatus = "requested" | "accepted" | "declined" | "cancelled";
@@ -85,7 +95,7 @@ interface Db {
   opportunities: OpportunityRecord[];
 }
 
-const DB_KEY = "db:v3";
+const DB_KEY = "db:v4";
 
 /** Starting hours so the calendar isn't empty on first login — the counsellor edits from here. */
 const DEFAULT_DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
@@ -97,6 +107,12 @@ function seed(): Db {
     { id: "u-priya", role: "counsellor", email: "counsellor1@resonance.demo", password: "demo1234", name: "Priya Das" },
     { id: "u-aarav", role: "student", email: "student1@resonance.demo", password: "demo1234", name: "Aarav M." },
     { id: "u-rhea", role: "student", email: "student2@resonance.demo", password: "demo1234", name: "Rhea K." },
+    { id: "u-jia", role: "student", email: "student3@resonance.demo", password: "demo1234", name: "Jia P." },
+    { id: "u-dev", role: "student", email: "student4@resonance.demo", password: "demo1234", name: "Dev A." },
+    { id: "u-kabir", role: "student", email: "student5@resonance.demo", password: "demo1234", name: "Kabir N." },
+    { id: "u-sana", role: "student", email: "student6@resonance.demo", password: "demo1234", name: "Sana R." },
+    { id: "u-meera", role: "student", email: "student7@resonance.demo", password: "demo1234", name: "Meera S." },
+    { id: "u-ishaan", role: "student", email: "student8@resonance.demo", password: "demo1234", name: "Ishaan T." },
   ];
   const counsellors: CounsellorRecord[] = [
     { id: "c-priya", userId: "u-priya", initials: "PD", title: "Wellness Cell · IIT KGP" },
@@ -105,10 +121,42 @@ function seed(): Db {
     {
       id: "s-aarav", userId: "u-aarav", code: "A-238", dept: "Mechanical · Y2", assignedCounsellorId: "c-priya",
       skills: ["Python", "CAD", "Mechanical Design"], domains: ["Mechanical Engineering", "Robotics"],
+      caseNote: { tier: "high", wellnessIndex: 41, trendDelta: -17, reason: "Hopelessness flagged · index ↓ 3 sessions" },
+    },
+    {
+      id: "s-jia", userId: "u-jia", code: "J-190", dept: "CSE · Y3", assignedCounsellorId: "c-priya",
+      skills: ["Python", "Data Structures"], domains: ["Computer Science"],
+      caseNote: { tier: "high", wellnessIndex: 44, trendDelta: -9, reason: "Panic episodes before vivas" },
+    },
+    {
+      id: "s-dev", userId: "u-dev", code: "D-260", dept: "Physics · Y1", assignedCounsellorId: "c-priya",
+      skills: ["Data Analysis"], domains: ["Physics"],
+      caseNote: { tier: "high", wellnessIndex: 46, trendDelta: -6, reason: "Homesickness · isolation rising" },
+    },
+    {
+      id: "s-kabir", userId: "u-kabir", code: "K-311", dept: "EE · Y2", assignedCounsellorId: "c-priya",
+      skills: ["Circuit Design"], domains: ["Electrical Engineering"],
+      caseNote: { tier: "medium", wellnessIndex: 55, trendDelta: -14, reason: "Down-trending, not booked" },
+    },
+    {
+      id: "s-sana", userId: "u-sana", code: "S-077", dept: "Chem · Y2", assignedCounsellorId: "c-priya",
+      skills: ["Lab Research"], domains: ["Chemistry"],
+      caseNote: { tier: "medium", wellnessIndex: 57, trendDelta: -9, reason: "Missed last 2 sessions" },
     },
     {
       id: "s-rhea", userId: "u-rhea", code: "R-104", dept: "Civil · Y1", assignedCounsellorId: "c-priya",
       skills: ["AutoCAD", "Structural Analysis"], domains: ["Civil Engineering", "Construction"],
+      caseNote: { tier: "low", wellnessIndex: 71, trendDelta: 4, reason: "Settling in · improving" },
+    },
+    {
+      id: "s-meera", userId: "u-meera", code: "M-052", dept: "Aero · Y4", assignedCounsellorId: "c-priya",
+      skills: ["Aerodynamics"], domains: ["Aerospace"],
+      caseNote: { tier: "low", wellnessIndex: 76, trendDelta: 2, reason: "Steady · post-grad planning" },
+    },
+    {
+      id: "s-ishaan", userId: "u-ishaan", code: "I-076", dept: "Maths · Y3", assignedCounsellorId: "c-priya",
+      skills: ["Statistics"], domains: ["Mathematics"],
+      caseNote: { tier: "low", wellnessIndex: 69, trendDelta: 1, reason: "Maintenance sessions" },
     },
   ];
 
@@ -128,6 +176,28 @@ function seed(): Db {
     }
   }
 
+  // Real appointments so "today's schedule," "last seen," and "next" are all computed, not authored strings.
+  function acceptedAt(studentId: string, dayOffset: number, hh: number, mm: number): AppointmentRecord {
+    const start = new Date(now);
+    start.setDate(start.getDate() + dayOffset);
+    start.setHours(hh, mm, 0, 0);
+    const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
+    return { id: `appt-${crypto.randomUUID()}`, studentId, counsellorId: "c-priya", startIso: start.toISOString(), endIso: end.toISOString(), status: "accepted" };
+  }
+  // Times deliberately match DEFAULT_DAILY_SLOT_TIMES so these show up in the Calendar's slot grid too.
+  const appointments: AppointmentRecord[] = [
+    acceptedAt("s-aarav", 0, 10, 0),     // today
+    acceptedAt("s-rhea", 0, 11, 30),     // today
+    acceptedAt("s-ishaan", 0, 14, 0),    // today
+    acceptedAt("s-meera", 0, 15, 30),    // today
+    acceptedAt("s-jia", -2, 10, 0),      // 2 days ago
+    acceptedAt("s-jia", 4, 11, 30),      // upcoming, this week
+    acceptedAt("s-dev", -5, 14, 0),      // 5 days ago
+    acceptedAt("s-kabir", -21, 10, 0),   // 3 weeks ago, nothing booked since
+    acceptedAt("s-sana", -21, 11, 30),   // 3 weeks ago, missed since
+    acceptedAt("s-ishaan", -6, 15, 30),  // an older session too, for history depth
+  ];
+
   const opportunities: OpportunityRecord[] = [
     { id: "o-1", title: "Mechanical Design Intern", org: "Tata AutoComp", type: "internship", tags: ["Mechanical Design", "CAD"], deadlineIso: daysAgo(-21, now).toISOString(), link: "#" },
     { id: "o-2", title: "Robotics Hackathon 2026", org: "IIT KGP Robotics Club", type: "hackathon", tags: ["Robotics", "Python"], deadlineIso: daysAgo(-10, now).toISOString(), link: "#" },
@@ -137,7 +207,7 @@ function seed(): Db {
     { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
   ];
 
-  return { users, counsellors, students, availability, appointments: [], messages, opportunities };
+  return { users, counsellors, students, availability, appointments, messages, opportunities };
 }
 
 function load(): Db {
@@ -218,6 +288,7 @@ export function createStudentAccount(name: string, email: string, password: stri
     assignedCounsellorId: null,
     skills: [],
     domains: [],
+    caseNote: { tier: "low", wellnessIndex: 0, trendDelta: 0, reason: "Baseline pending — no sessions yet" },
   };
   db.users.push(user);
   db.students.push(student);
@@ -299,6 +370,56 @@ export function listAppointmentsForCounsellor(counsellorId: string): Appointment
 
 export function listAppointmentsForStudent(studentId: string): AppointmentRecord[] {
   return load().appointments.filter((a) => a.studentId === studentId);
+}
+
+/** One row per assigned student — the Caseload screen and Home's rollup both read this, so they can't drift apart. */
+export interface CaseloadRow {
+  student: StudentRecord;
+  name: string;
+  tier: Tier;
+  wellnessIndex: number;
+  trendDelta: number;
+  reason: string;
+  /** Most recent past accepted session, if any — real, not an authored "3w ago" string. */
+  lastSeenIso: string | null;
+  /** Soonest future accepted session, if any. */
+  nextIso: string | null;
+}
+
+export function getCaseloadForCounsellor(counsellorId: string, from: Date = new Date()): CaseloadRow[] {
+  const db = load();
+  return listStudentsForCounsellor(counsellorId).map((student) => {
+    const accepted = db.appointments.filter((a) => a.studentId === student.id && a.counsellorId === counsellorId && a.status === "accepted");
+    const past = accepted.filter((a) => new Date(a.startIso).getTime() <= from.getTime()).sort((a, b) => b.startIso.localeCompare(a.startIso));
+    const future = accepted.filter((a) => new Date(a.startIso).getTime() > from.getTime()).sort((a, b) => a.startIso.localeCompare(b.startIso));
+    return {
+      student,
+      name: getStudentName(student.id),
+      tier: student.caseNote.tier,
+      wellnessIndex: student.caseNote.wellnessIndex,
+      trendDelta: student.caseNote.trendDelta,
+      reason: student.caseNote.reason,
+      lastSeenIso: past[0]?.startIso ?? null,
+      nextIso: future[0]?.startIso ?? null,
+    };
+  });
+}
+
+/** Today's confirmed sessions for this counsellor, in order — what Home's schedule actually shows. */
+export function getTodaysAppointments(counsellorId: string, from: Date = new Date()): Array<AppointmentRecord & { studentName: string; tier: Tier }> {
+  const db = load();
+  return db.appointments
+    .filter((a) => a.counsellorId === counsellorId && a.status === "accepted" && isSameDay(new Date(a.startIso), from))
+    .sort((a, b) => a.startIso.localeCompare(b.startIso))
+    .map((a) => {
+      const student = db.students.find((s) => s.id === a.studentId);
+      return { ...a, studentName: getStudentName(a.studentId), tier: student?.caseNote.tier ?? "low" };
+    });
+}
+
+/** Trending down with nothing booked — the quiet decliners, computed from the same caseload rows Caseload shows. */
+export function getNeedsAttention(counsellorId: string, from: Date = new Date()): CaseloadRow[] {
+  return getCaseloadForCounsellor(counsellorId, from).filter((r) => r.trendDelta < 0 && !r.nextIso);
 }
 
 export function requestAppointment(studentId: string, counsellorId: string, startIso: string): AppointmentRecord {

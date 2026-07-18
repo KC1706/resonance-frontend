@@ -2,29 +2,13 @@
  * Demo data, ported from the Resonance.dc.html prototype. All fictional.
  * A real build swaps this module for the API layer.
  */
-import { state, type Tier } from "@/lib/state";
+import { state } from "@/lib/state";
 
 // ── Home / Today ──────────────────────────────────────────────────────────────
-export const homeStats = [
-  { label: "Sessions today", value: "5", sub: "2 flagged", color: undefined as string | undefined },
-  { label: "Flagged students", value: "2", sub: "need attention", color: state.watch.fg },
-  { label: "Action items", value: "4", sub: "2 due today", color: undefined },
-  { label: "New analysis", value: "3", sub: "uploads ready", color: "var(--color-accent)" },
-];
-
-export const schedule = [
-  { time: "10:30", name: "Aarav M.", note: "A-238 · Session 4", tier: "WATCH" as const },
-  { time: "11:30", name: "Rhea K.", note: "R-104 · Session 2", tier: "LOW" as const },
-  { time: "13:00", name: "Ishaan T.", note: "I-076 · Session 6", tier: "LOW" as const },
-  { time: "14:30", name: "Meera S.", note: "M-052 · Session 7", tier: "LOW" as const },
-  { time: "16:00", name: "Kabir N.", note: "K-311 · Session 1 · intake", tier: "NEW" as const },
-];
-
-export const needsAttention = [
-  { name: "Kabir N. · K-311", reason: "Wellness ↓ 14 pts / 3 wks · not booked", delta: "▼14" },
-  { name: "Sana R. · S-077", reason: "Missed last 2 sessions · no reply", delta: "▼9" },
-];
-
+// Sessions-today, flagged-students, schedule, needs-attention, and caseload are
+// now computed from real db.ts data (see HomeToday.tsx / Caseload.tsx) so they
+// can't drift out of sync with Calendar/Messages. Only "action items" — a
+// feature with no backing data model yet — stays authored here.
 export const actions = [
   { label: "Review flagged clip · A-238 session 3", due: "today" },
   { label: "Send referral letter · J-190", due: "today" },
@@ -152,18 +136,3 @@ export const uploads = [
   { name: "followup_r104.mp3", meta: "22 min · English", pct: 22, col: state.watch.fg, status: "Diarizing…", done: false },
 ];
 
-// ── Caseload ──────────────────────────────────────────────────────────────────
-export interface CaseRow {
-  name: string; id: string; dept: string; tier: string; T: Tier;
-  idx: string; trend: string; tcol: string; reason: string; seen: string; next: string;
-}
-export const caseload: CaseRow[] = [
-  { name: "Aarav M.", id: "A-238", dept: "Mechanical · Y2", tier: "HIGH", T: "high", idx: "41", trend: "▼17", tcol: state.esc.fg, reason: "Hopelessness flagged · index ↓ 3 sessions", seen: "today", next: "10:30" },
-  { name: "Jia P.", id: "J-190", dept: "CSE · Y3", tier: "HIGH", T: "high", idx: "44", trend: "▼9", tcol: state.esc.fg, reason: "Panic episodes before vivas", seen: "2d ago", next: "Thu" },
-  { name: "Dev A.", id: "D-260", dept: "Physics · Y1", tier: "HIGH", T: "high", idx: "46", trend: "▼6", tcol: state.esc.fg, reason: "Homesickness · isolation rising", seen: "5d ago", next: "—" },
-  { name: "Kabir N.", id: "K-311", dept: "EE · Y2", tier: "MED", T: "medium", idx: "55", trend: "▼14", tcol: state.watch.fg, reason: "Down-trending, not booked", seen: "3w ago", next: "—" },
-  { name: "Sana R.", id: "S-077", dept: "Chem · Y2", tier: "MED", T: "medium", idx: "57", trend: "▼9", tcol: state.watch.fg, reason: "Missed last 2 sessions", seen: "3w ago", next: "—" },
-  { name: "Rhea K.", id: "R-104", dept: "Civil · Y1", tier: "LOW", T: "low", idx: "71", trend: "▲4", tcol: "var(--color-accent)", reason: "Settling in · improving", seen: "1w ago", next: "11:30" },
-  { name: "Meera S.", id: "M-052", dept: "Aero · Y4", tier: "LOW", T: "low", idx: "76", trend: "▲2", tcol: "var(--color-accent)", reason: "Steady · post-grad planning", seen: "1w ago", next: "14:30" },
-  { name: "Ishaan T.", id: "I-076", dept: "Maths · Y3", tier: "LOW", T: "low", idx: "69", trend: "▲1", tcol: "var(--color-accent)", reason: "Maintenance sessions", seen: "6d ago", next: "13:00" },
-];

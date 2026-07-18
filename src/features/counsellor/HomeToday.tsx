@@ -1,26 +1,45 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, StatCard, Kicker, Tag } from "@/components/Blueprint";
 import { state, tierStyle } from "@/lib/state";
-import { formatWeekdayDate, greetingTimeOfDay } from "@/lib/dates";
+import { formatWeekdayDate, formatClock, greetingTimeOfDay } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
-import { listAppointmentsForCounsellor } from "@/data/db";
+import {
+  listAppointmentsForCounsellor, getCaseloadForCounsellor, getTodaysAppointments, getNeedsAttention,
+} from "@/data/db";
 
-const tierTag = (tier: string) => {
-  if (tier === "WATCH") return { background: state.watch.bg, color: state.watch.fg };
-  if (tier === "NEW") return { background: "var(--color-neutral-100)", color: "var(--color-neutral-800)" };
-  return { background: "var(--color-accent-100)", color: "var(--color-accent-800)" };
-};
+const tierTag = (tier: "high" | "medium" | "low") => tierStyle(tier);
+
+/** The one deeply-authored demo narrative (session transcript, facet deltas, radar) is Aarav's — see docs/V2_Platform_Plan.md §10. */
+const HAS_FULL_STORY = new Set(["s-aarav"]);
 
 export function HomeToday() {
   const navigate = useNavigate();
-  const { homeStats, schedule, needsAttention, actions, identity, caseload } = useAppData();
+  const { actions, identity } = useAppData();
   const today = new Date();
 
+  if (!identity.recordId) return null;
+  const counsellorId = identity.recordId;
+
+  const caseloadRows = getCaseloadForCounsellor(counsellorId, today);
+  const todays = getTodaysAppointments(counsellorId, today);
+  const needsAttention = getNeedsAttention(counsellorId, today);
+  const pendingRequests = listAppointmentsForCounsellor(counsellorId).filter((a) => a.status === "requested").length;
+
   const counts = { high: 0, medium: 0, low: 0 };
-  for (const c of caseload) counts[c.T]++;
-  const pendingRequests = identity.recordId
-    ? listAppointmentsForCounsellor(identity.recordId).filter((a) => a.status === "requested").length
-    : 0;
+  for (const r of caseloadRows) counts[r.tier]++;
+
+  const upcomingToday = todays.filter((a) => new Date(a.startIso).getTime() > today.getTime());
+  const next = upcomingToday[0];
+  const nextRow = next ? caseloadRows.find((r) => r.student.id === next.studentId) : undefined;
+  const minutesUntil = next ? Math.round((new Date(next.startIso).getTime() - today.getTime()) / 60000) : null;
+
+  const statTiles = [
+    { label: "Sessions today", value: String(todays.length), sub: `${todays.filter((a) => a.tier === "high").length} flagged`, color: undefined as string | undefined },
+    { label: "Flagged students", value: String(counts.high), sub: "need attention", color: state.watch.fg },
+    { label: "Action items", value: String(actions.length), sub: `${actions.filter((a) => a.due === "today").length} due today`, color: undefined },
+    { label: "New analysis", value: "3", sub: "uploads ready", color: "var(--color-accent)" }, // no upload-processing feature wired yet — illustrative only
+  ];
+
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       {/* Header */}
@@ -29,7 +48,8 @@ export function HomeToday() {
           <Kicker>{formatWeekdayDate(today)}</Kicker>
           <h2 style={{ margin: 0 }}>Good {greetingTimeOfDay(today)}, {identity.firstName}.</h2>
           <p className="text-muted" style={{ margin: "4px 0 0", fontSize: 14 }}>
-            You have 5 sessions today. One student needs attention before you start.
+            You have {todays.length} session{todays.length === 1 ? "" : "s"} today.
+            {needsAttention.length > 0 && ` ${needsAttention.length} student${needsAttention.length === 1 ? "" : "s"} need${needsAttention.length === 1 ? "s" : ""} attention before you start.`}
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => navigate("/counsellor/cockpit")}>
@@ -40,7 +60,7 @@ export function HomeToday() {
 
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-        {homeStats.map((s) => (
+        {statTiles.map((s) => (
           <StatCard key={s.label} label={s.label} value={s.value} sub={s.sub} color={s.color} />
         ))}
       </div>
@@ -49,59 +69,81 @@ export function HomeToday() {
         {/* Left column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
           {/* Prep card */}
-          <Blueprint elev="sm" style={{ padding: "var(--space-4)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
-              <Kicker>Next session · 10:30 · in 25 min</Kicker>
-              <Tag style={{ background: state.watch.bg, color: state.watch.fg, border: `1px solid ${state.watch.bd}` }}>WATCH</Tag>
-            </div>
-            <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
-              <div style={{ width: 52, height: 52, border: "1px solid var(--color-divider)", display: "grid", placeItems: "center", fontFamily: "var(--font-heading)", fontSize: 19, flex: "none" }}>
-                AM
+          {next && nextRow ? (
+            <Blueprint elev="sm" style={{ padding: "var(--space-4)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
+                <Kicker>Next session · {formatClock(new Date(next.startIso))}{minutesUntil !== null && minutesUntil >= 0 ? ` · in ${minutesUntil} min` : ""}</Kicker>
+                <Tag style={tierTag(nextRow.tier)}>{nextRow.tier.toUpperCase()}</Tag>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <h4 style={{ margin: 0 }}>Aarav M.</h4>
-                  <span className="text-muted" style={{ fontSize: 12 }}>A-238 · Session 4 · since Feb 12</span>
+              <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
+                <div style={{ width: 52, height: 52, border: "1px solid var(--color-divider)", display: "grid", placeItems: "center", fontFamily: "var(--font-heading)", fontSize: 19, flex: "none" }}>
+                  {nextRow.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
                 </div>
-                <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-accent)", margin: "10px 0 4px" }}>
-                  Story so far
-                </div>
-                <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
-                  Sleep and academic anxiety since intake; withdrew after endsem results. Wellness Index down 17 pts across
-                  3 sessions. Family expectations recur. <strong>Last session surfaced early hopelessness cues</strong> —
-                  handle gently, lead with connection.
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "12px 0" }}>
-                  <Tag className="tag-accent">Sleep</Tag>
-                  <Tag className="tag-accent">Academic anxiety</Tag>
-                  <Tag className="tag-accent">Family expectations</Tag>
-                  <Tag style={{ background: state.esc.bg, color: state.esc.fg }}>Hopelessness ↑</Tag>
-                </div>
-                <div className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
-                  <strong style={{ color: "var(--color-text)" }}>Pending homework:</strong> sleep-log for one week (not returned).
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn-primary" onClick={() => navigate("/counsellor/cockpit")}>Start session</button>
-                  <button className="btn btn-secondary" onClick={() => navigate("/counsellor/profile")}>Review full profile</button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <h4 style={{ margin: 0 }}>{nextRow.name}</h4>
+                    <span className="text-muted" style={{ fontSize: 12 }}>{nextRow.student.code}</span>
+                  </div>
+                  <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-accent)", margin: "10px 0 4px" }}>
+                    Story so far
+                  </div>
+                  {HAS_FULL_STORY.has(nextRow.student.id) ? (
+                    <>
+                      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+                        Sleep and academic anxiety since intake; withdrew after endsem results. Wellness Index down 17 pts across
+                        3 sessions. Family expectations recur. <strong>Last session surfaced early hopelessness cues</strong> —
+                        handle gently, lead with connection.
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "12px 0" }}>
+                        <Tag className="tag-accent">Sleep</Tag>
+                        <Tag className="tag-accent">Academic anxiety</Tag>
+                        <Tag className="tag-accent">Family expectations</Tag>
+                        <Tag style={{ background: state.esc.bg, color: state.esc.fg }}>Hopelessness ↑</Tag>
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+                        <strong style={{ color: "var(--color-text)" }}>Pending homework:</strong> sleep-log for one week (not returned).
+                      </div>
+                    </>
+                  ) : (
+                    <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.5 }}>
+                      {nextRow.reason}. Index at {nextRow.wellnessIndex}, {nextRow.trendDelta > 0 ? "trending up" : nextRow.trendDelta < 0 ? "trending down" : "steady"}. Open the full profile for session history before you start.
+                    </p>
+                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary" onClick={() => navigate("/counsellor/cockpit")}>Start session</button>
+                    <button className="btn btn-secondary" onClick={() => navigate("/counsellor/profile", { state: { studentId: nextRow.student.id } })}>Review full profile</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Blueprint>
+            </Blueprint>
+          ) : (
+            <Blueprint style={{ padding: "var(--space-4)" }}>
+              <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>No more sessions today.</p>
+            </Blueprint>
+          )}
 
           {/* Today's schedule */}
           <Blueprint style={{ padding: "var(--space-4)" }}>
             <h4 style={{ margin: "0 0 var(--space-3)" }}>Today's schedule</h4>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {schedule.map((v) => (
-                <div key={v.note} style={{ display: "grid", gridTemplateColumns: "64px 1fr auto", gap: 12, alignItems: "center", padding: "9px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>{v.time}</span>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 500 }}>{v.name}</div>
-                    <div className="text-muted" style={{ fontSize: 11.5 }}>{v.note}</div>
+              {todays.length === 0 && <p className="text-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>Nothing booked today.</p>}
+              {todays.map((v) => {
+                const row = caseloadRows.find((r) => r.student.id === v.studentId);
+                return (
+                  <div
+                    key={v.id}
+                    onClick={() => navigate("/counsellor/profile", { state: { studentId: v.studentId } })}
+                    style={{ cursor: "pointer", display: "grid", gridTemplateColumns: "64px 1fr auto", gap: 12, alignItems: "center", padding: "9px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}
+                  >
+                    <span style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>{formatClock(new Date(v.startIso))}</span>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{v.studentName}</div>
+                      <div className="text-muted" style={{ fontSize: 11.5 }}>{row?.student.code}</div>
+                    </div>
+                    <Tag style={tierTag(v.tier)}>{v.tier.toUpperCase()}</Tag>
                   </div>
-                  <Tag style={tierTag(v.tier)}>{v.tier}</Tag>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Blueprint>
         </div>
@@ -137,13 +179,18 @@ export function HomeToday() {
             <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12 }}>
               Trending down but not booked — the quiet decliners the system catches for you.
             </p>
+            {needsAttention.length === 0 && <p className="text-muted" style={{ fontSize: 12.5 }}>No one's slipping through right now.</p>}
             {needsAttention.map((n) => (
-              <div key={n.name} onClick={() => navigate("/counsellor/profile")} style={{ cursor: "pointer", padding: "10px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <div
+                key={n.student.id}
+                onClick={() => navigate("/counsellor/profile", { state: { studentId: n.student.id } })}
+                style={{ cursor: "pointer", padding: "10px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+              >
                 <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{n.name}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{n.name} · {n.student.code}</div>
                   <div className="text-muted" style={{ fontSize: 11.5 }}>{n.reason}</div>
                 </div>
-                <span style={{ fontFamily: "var(--font-heading)", color: state.esc.fg, fontSize: 14 }}>{n.delta}</span>
+                <span style={{ fontFamily: "var(--font-heading)", color: state.esc.fg, fontSize: 14 }}>▼{Math.abs(n.trendDelta)}</span>
               </div>
             ))}
           </Blueprint>
