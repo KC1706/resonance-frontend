@@ -4,10 +4,10 @@ import { useAppData } from "@/context/AppDataContext";
 
 export function StudentHome() {
   const navigate = useNavigate();
-  const { studentStrengths, studentRes } = useAppData();
+  const { studentStrengths, studentRes, identity } = useAppData();
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "var(--space-8)" }}>
-      <h1 style={{ margin: "0 0 4px", fontSize: 38 }}>Hi Aarav.</h1>
+      <h1 style={{ margin: "0 0 4px", fontSize: 38 }}>Hi {identity.firstName}.</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 15 }}>Your space. You decide what's shared.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>

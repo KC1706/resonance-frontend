@@ -2,16 +2,51 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import * as shared from "@/data/shared";
 import * as counsellorData from "@/data/counsellor";
 import * as studentData from "@/data/student";
+import { useAuth } from "@/context/AuthContext";
+import { getCounsellorProfile, getStudentProfile } from "@/data/db";
 
-export type AppData = typeof shared & typeof counsellorData & typeof studentData;
+export interface Identity {
+  name: string;
+  firstName: string;
+  initials: string;
+  title: string; // institutional role line (counsellor) or dept/code line (student)
+}
+
+export type AppData = typeof shared & typeof counsellorData & typeof studentData & {
+  /** The logged-in counsellor's real identity — replaces the old hardcoded "Priya Das". */
+  identity: Identity;
+};
 
 const AppDataContext = createContext<AppData | null>(null);
 
-/** Seam Thread 11 replaces with real fetching (loading/error states slot in here). */
+function initialsOf(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+}
+
+/** Seam later threads replace with real fetching (loading/error states slot in here). */
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  const identity = useMemo<Identity>(() => {
+    if (user?.role === "counsellor") {
+      const profile = getCounsellorProfile(user.id);
+      return { name: user.name, firstName: user.name.split(" ")[0], initials: initialsOf(user.name), title: profile?.title ?? "Counsellor" };
+    }
+    if (user?.role === "student") {
+      const profile = getStudentProfile(user.id);
+      return {
+        name: user.name,
+        firstName: user.name.split(" ")[0],
+        initials: initialsOf(user.name),
+        title: profile ? `${profile.code} · ${profile.dept}` : "Unassigned",
+      };
+    }
+    return { name: "", firstName: "", initials: "", title: "" };
+  }, [user]);
+
   const value = useMemo<AppData>(
-    () => ({ ...shared, ...counsellorData, ...studentData }),
-    [],
+    () => ({ ...shared, ...counsellorData, ...studentData, identity }),
+    [identity],
   );
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

@@ -1,18 +1,21 @@
+import { LogOut } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { PERSONAS, PERSONA_ORDER, personaFromPath, type PersonaId } from "@/config/nav";
+import { PERSONAS, personaFromPath } from "@/config/nav";
 import { useAppData } from "@/context/AppDataContext";
+import { useAuth } from "@/context/AuthContext";
 
 /**
  * Persona-adaptive shell nav, ported from the prototype sidebar: brand mark,
- * a workspace persona switch, a per-persona nav list, the facet-engine trust
- * badge, and the account row.
+ * the workspace label, a per-persona nav list, the facet-engine trust badge,
+ * and the account row (now the real logged-in identity, with logout).
  */
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const active = personaFromPath(location.pathname);
   const persona = PERSONAS[active];
-  const { counsellor } = useAppData();
+  const { identity } = useAppData();
+  const { logout } = useAuth();
 
   return (
     <aside
@@ -44,27 +47,16 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Workspace / persona switch */}
+      {/* Workspace label — persona now comes from the logged-in account, not a switcher */}
       <div className="blueprint" style={{ padding: "8px 10px" }}>
         <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
         <label
           className="text-muted"
-          style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 4 }}
+          style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 2 }}
         >
           Workspace
         </label>
-        <select
-          className="input"
-          style={{ minHeight: 32, fontSize: 13 }}
-          value={active}
-          onChange={(e) => navigate(PERSONAS[e.target.value as PersonaId].home)}
-        >
-          {PERSONA_ORDER.map((id) => (
-            <option key={id} value={id}>
-              {PERSONAS[id].label}
-            </option>
-          ))}
-        </select>
+        <div style={{ fontSize: 13 }}>{persona.label}</div>
       </div>
 
       {/* Per-persona nav */}
@@ -132,12 +124,23 @@ export function Sidebar() {
               display: "grid", placeItems: "center", fontFamily: "var(--font-heading)", fontSize: 13,
             }}
           >
-            {counsellor.initials}
+            {identity.initials}
           </div>
-          <div style={{ lineHeight: 1.2 }}>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Dr. {counsellor.name}</div>
-            <div className="text-muted" style={{ fontSize: 10.5 }}>{counsellor.role}</div>
+          <div style={{ lineHeight: 1.2, flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {active === "counsellor" ? `Dr. ${identity.name}` : identity.name}
+            </div>
+            <div className="text-muted" style={{ fontSize: 10.5 }}>{identity.title}</div>
           </div>
+          <button
+            type="button"
+            onClick={() => { logout(); navigate("/login"); }}
+            title="Sign out"
+            className="text-muted"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "grid", placeItems: "center" }}
+          >
+            <LogOut size={15} strokeWidth={1.5} />
+          </button>
         </div>
       </div>
     </aside>

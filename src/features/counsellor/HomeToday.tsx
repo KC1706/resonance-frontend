@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, StatCard, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
+import { formatWeekdayDate, greetingTimeOfDay } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
 
 const tierTag = (tier: string) => {
@@ -11,14 +12,15 @@ const tierTag = (tier: string) => {
 
 export function HomeToday() {
   const navigate = useNavigate();
-  const { homeStats, schedule, needsAttention, actions } = useAppData();
+  const { homeStats, schedule, needsAttention, actions, identity } = useAppData();
+  const today = new Date();
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "var(--space-6)" }}>
         <div>
-          <Kicker>Wednesday · 18 March</Kicker>
-          <h2 style={{ margin: 0 }}>Good morning, Priya.</h2>
+          <Kicker>{formatWeekdayDate(today)}</Kicker>
+          <h2 style={{ margin: 0 }}>Good {greetingTimeOfDay(today)}, {identity.firstName}.</h2>
           <p className="text-muted" style={{ margin: "4px 0 0", fontSize: 14 }}>
             You have 5 sessions today. One student needs attention before you start.
           </p>
