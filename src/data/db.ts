@@ -244,8 +244,19 @@ function seed(): Db {
   return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [] };
 }
 
+/** Fields added to the schema after some browsers already had this key cached — never crash on a stale shape. */
+function backfill(db: Db): Db {
+  db.availability ??= [];
+  db.appointments ??= [];
+  db.messages ??= [];
+  db.opportunities ??= [];
+  db.journalEntries ??= [];
+  db.checkins ??= [];
+  return db;
+}
+
 function load(): Db {
-  return readJSON<Db>(DB_KEY, seed());
+  return backfill(readJSON<Db>(DB_KEY, seed()));
 }
 
 function save(db: Db): void {
