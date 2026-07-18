@@ -11,3 +11,7 @@ npm-debug.log*
 
 # TS build info
 *.tsbuildinfo
+
+# Large/redundant demo audio — keep only lucy-session.mp3 (loaded by the cockpit)
+/public/Case study clinical example CBT_ First session with a client with symptoms of depression (CBT model).mp3
+/public/sample-session.mp3
