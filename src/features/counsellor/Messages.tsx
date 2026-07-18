@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Blueprint, Kicker } from "@/components/Blueprint";
 import { ChatThread } from "@/components/ChatThread";
 import { useAppData } from "@/context/AppDataContext";
@@ -7,14 +8,23 @@ import { listThreadsForCounsellor, getThread, sendMessage, getStudentName } from
 /**
  * Plain chat with an assigned student — for logistics and support, always
  * available whether or not a session is booked. Not analyzed by the facet
- * engine; only recorded audio sessions are.
+ * engine; only recorded audio sessions are. Arriving from the Calendar's
+ * message icon preselects that student via router state.
  */
 export function Messages() {
   const { identity } = useAppData();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const location = useLocation();
+  const preselected = (location.state as { studentId?: string } | null)?.studentId ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(preselected);
+  const [search, setSearch] = useState("");
   const [, forceRerender] = useState(0);
 
   const threads = identity.recordId ? listThreadsForCounsellor(identity.recordId) : [];
+  const filtered = threads.filter(({ student }) => {
+    const name = getStudentName(student.id).toLowerCase();
+    const q = search.trim().toLowerCase();
+    return !q || name.includes(q) || student.code.toLowerCase().includes(q) || student.dept.toLowerCase().includes(q);
+  });
   const activeStudentId = selectedId ?? threads[0]?.student.id ?? null;
   const activeStudent = threads.find((t) => t.student.id === activeStudentId)?.student;
   const messages = useMemo(
@@ -36,10 +46,14 @@ export function Messages() {
         <p className="text-muted" style={{ margin: "4px 0 0", fontSize: 14 }}>Chat with your students — not analyzed, just for staying in touch.</p>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "var(--space-4)", flex: 1, minHeight: 0 }}>
-        <Blueprint style={{ padding: "var(--space-3)", overflowY: "auto" }}>
+        <Blueprint style={{ padding: "var(--space-3)", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <Kicker>Your students</Kicker>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 8 }}>
-            {threads.map(({ student, last }) => (
+          <input
+            className="input" placeholder="Search to start a chat…" style={{ fontSize: 12.5, margin: "8px 0" }}
+            value={search} onChange={(e) => setSearch(e.target.value)}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+            {filtered.map(({ student, last }) => (
               <button
                 key={student.id}
                 onClick={() => setSelectedId(student.id)}
@@ -51,18 +65,20 @@ export function Messages() {
               >
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{getStudentName(student.id)}</div>
                 <div className="text-muted" style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {last ? last.text : "No messages yet"}
+                  {last ? last.text : "No messages yet — start the conversation"}
                 </div>
               </button>
             ))}
             {threads.length === 0 && <p className="text-muted" style={{ fontSize: 12.5, padding: 8 }}>No students assigned yet.</p>}
+            {threads.length > 0 && filtered.length === 0 && <p className="text-muted" style={{ fontSize: 12.5, padding: 8 }}>No match.</p>}
           </div>
         </Blueprint>
         <Blueprint style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", minHeight: 0 }}>
           {activeStudent ? (
             <>
               <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid var(--color-divider)" }}>
-                <div style={{ fontWeight: 500 }}>{activeStudent.code} · {activeStudent.dept}</div>
+                <div style={{ fontWeight: 500 }}>{getStudentName(activeStudent.id)}</div>
+                <div className="text-muted" style={{ fontSize: 11.5 }}>{activeStudent.code} · {activeStudent.dept}</div>
               </div>
               <ChatThread messages={messages} currentRole="counsellor" onSend={handleSend} placeholder="Message this student…" />
             </>

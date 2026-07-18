@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
 import { useAppData } from "@/context/AppDataContext";
-import { getWeekSlots, requestAppointment, cancelAppointment, listAppointmentsForStudent } from "@/data/db";
+import {
+  getWeekSlots, requestAppointment, withdrawRequest, cancelConfirmedAppointment, listAppointmentsForStudent,
+} from "@/data/db";
 import { formatClock, formatWeekdayDate } from "@/lib/dates";
 
 const apptTag = (status: string) => {
@@ -30,14 +32,23 @@ export function StudentSessions() {
   const upcoming = myAppointments.filter((a) => new Date(a.startIso).getTime() > Date.now()).sort((a, b) => a.startIso.localeCompare(b.startIso));
   const past = myAppointments.filter((a) => new Date(a.startIso).getTime() <= Date.now());
   const days = getWeekSlots(identity.assignedCounsellorId);
+  const alreadyRequestedTimes = new Set(myAppointments.map((a) => a.startIso));
 
   function book(startIso: string) {
+    if (!window.confirm(`Request ${formatWeekdayDate(new Date(startIso))} at ${formatClock(new Date(startIso))}?`)) return;
     requestAppointment(identity.recordId!, identity.assignedCounsellorId!, startIso);
     forceRerender((n) => n + 1);
   }
 
-  function cancel(id: string) {
-    cancelAppointment(id);
+  function cancel(id: string, status: string) {
+    if (status === "accepted") {
+      const reason = window.prompt("Reason for cancelling this confirmed session?");
+      if (!reason) return;
+      cancelConfirmedAppointment(id, reason, "student");
+    } else {
+      if (!window.confirm("Withdraw this request?")) return;
+      withdrawRequest(id);
+    }
     forceRerender((n) => n + 1);
   }
 
@@ -56,7 +67,7 @@ export function StudentSessions() {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <Tag style={apptTag(a.status)}>{a.status === "accepted" ? "Confirmed" : "Waiting on counsellor"}</Tag>
-              <button className="btn btn-secondary" onClick={() => cancel(a.id)}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => cancel(a.id, a.status)}>Cancel</button>
             </div>
           </div>
         ))}
@@ -69,17 +80,23 @@ export function StudentSessions() {
             <div key={dayKey}>
               <div className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{formatWeekdayDate(new Date(dayKey)).split(" · ")[0].slice(0, 3)} {new Date(dayKey).getDate()}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {slots.map((slot) => (
-                  <button
-                    key={slot.startIso}
-                    className="btn btn-secondary"
-                    disabled={slot.status !== "free"}
-                    onClick={() => book(slot.startIso)}
-                    style={{ fontSize: 11.5, padding: "4px 2px", opacity: slot.status === "free" ? 1 : 0.4 }}
-                  >
-                    {formatClock(new Date(slot.startIso))}
-                  </button>
-                ))}
+                {slots.length === 0 && <span className="text-muted" style={{ fontSize: 10.5 }}>—</span>}
+                {slots.map((slot) => {
+                  const taken = slot.confirmed.length > 0;
+                  const already = alreadyRequestedTimes.has(slot.startIso);
+                  return (
+                    <button
+                      key={slot.startIso}
+                      className="btn btn-secondary"
+                      disabled={taken || already}
+                      onClick={() => book(slot.startIso)}
+                      title={already ? "You've already requested this time" : taken ? "No longer available" : slot.pending.length > 0 ? `${slot.pending.length} other student(s) have also requested this` : undefined}
+                      style={{ fontSize: 11.5, padding: "4px 2px", opacity: taken || already ? 0.4 : 1 }}
+                    >
+                      {formatClock(new Date(slot.startIso))}{!taken && !already && slot.pending.length > 0 ? " •" : ""}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -43,6 +43,15 @@ export interface AppointmentRecord {
   startIso: string;
   endIso: string;
   status: AppointmentStatus;
+  /** Why it was declined/cancelled — required whenever a confirmed slot is cancelled. */
+  reason?: string;
+}
+
+/** A slot the counsellor has opened up — students can only request against these. */
+export interface AvailabilitySlot {
+  id: string;
+  counsellorId: string;
+  startIso: string;
 }
 
 export interface MessageRecord {
@@ -70,15 +79,16 @@ interface Db {
   users: UserRecord[];
   counsellors: CounsellorRecord[];
   students: StudentRecord[];
+  availability: AvailabilitySlot[];
   appointments: AppointmentRecord[];
   messages: MessageRecord[];
   opportunities: OpportunityRecord[];
 }
 
-const DB_KEY = "db:v2";
+const DB_KEY = "db:v3";
 
-/** The counsellor's standing weekly hours — same slots every day, kept simple on purpose. */
-export const DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
+/** Starting hours so the calendar isn't empty on first login — the counsellor edits from here. */
+const DEFAULT_DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
 const SLOT_MINUTES = 30;
 
 function seed(): Db {
@@ -108,6 +118,16 @@ function seed(): Db {
     { id: "m-2", studentId: "s-aarav", counsellorId: "c-priya", sender: "counsellor", text: "Of course, Aarav — see you Thursday.", atIso: daysAgo(3, now).toISOString() },
   ];
 
+  const availability: AvailabilitySlot[] = [];
+  for (let d = 0; d < 7; d++) {
+    const day = daysAgo(-d, now);
+    for (const [hh, mm] of DEFAULT_DAILY_SLOT_TIMES) {
+      const slot = new Date(day);
+      slot.setHours(hh, mm, 0, 0);
+      availability.push({ id: `av-${crypto.randomUUID()}`, counsellorId: "c-priya", startIso: slot.toISOString() });
+    }
+  }
+
   const opportunities: OpportunityRecord[] = [
     { id: "o-1", title: "Mechanical Design Intern", org: "Tata AutoComp", type: "internship", tags: ["Mechanical Design", "CAD"], deadlineIso: daysAgo(-21, now).toISOString(), link: "#" },
     { id: "o-2", title: "Robotics Hackathon 2026", org: "IIT KGP Robotics Club", type: "hackathon", tags: ["Robotics", "Python"], deadlineIso: daysAgo(-10, now).toISOString(), link: "#" },
@@ -117,7 +137,7 @@ function seed(): Db {
     { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
   ];
 
-  return { users, counsellors, students, appointments: [], messages, opportunities };
+  return { users, counsellors, students, availability, appointments: [], messages, opportunities };
 }
 
 function load(): Db {
@@ -207,33 +227,70 @@ export function createStudentAccount(name: string, email: string, password: stri
 
 // ── Calendar & appointments ─────────────────────────────────────────────────
 
-/** Every slot time in the next 7 days for one counsellor, each tagged with its current status. */
+/** One open slot in the next 7 days, with every request against it (usually 0-2). */
 export interface CalendarSlot {
+  availabilityId: string;
   startIso: string;
-  status: "free" | AppointmentStatus;
-  appointmentId?: string;
-  studentId?: string;
+  pending: AppointmentRecord[];
+  confirmed: AppointmentRecord[];
 }
 
+/** The counsellor's own availability, grouped by day, each slot showing who's requested or confirmed on it. */
 export function getWeekSlots(counsellorId: string, from: Date = new Date()): Record<string, CalendarSlot[]> {
   const db = load();
   const days: Record<string, CalendarSlot[]> = {};
   for (let d = 0; d < 7; d++) {
-    const day = daysAgo(-d, from);
-    const dayKey = day.toDateString();
-    days[dayKey] = DAILY_SLOT_TIMES.map(([hh, mm]) => {
-      const slot = new Date(day);
-      slot.setHours(hh, mm, 0, 0);
-      const startIso = slot.toISOString();
-      const match = db.appointments.find(
-        (a) => a.counsellorId === counsellorId && a.startIso === startIso && a.status !== "declined" && a.status !== "cancelled",
-      );
-      return match
-        ? { startIso, status: match.status, appointmentId: match.id, studentId: match.studentId }
-        : { startIso, status: "free" as const };
-    }).filter((slot) => new Date(slot.startIso).getTime() > from.getTime() || slot.status !== "free");
+    days[daysAgo(-d, from).toDateString()] = [];
+  }
+
+  const relevant = db.availability
+    .filter((a) => a.counsellorId === counsellorId)
+    .sort((a, b) => a.startIso.localeCompare(b.startIso));
+
+  for (const slot of relevant) {
+    const dayKey = new Date(slot.startIso).toDateString();
+    if (!(dayKey in days)) continue; // outside the visible 7-day window
+    const matches = db.appointments.filter((a) => a.counsellorId === counsellorId && a.startIso === slot.startIso);
+    days[dayKey].push({
+      availabilityId: slot.id,
+      startIso: slot.startIso,
+      pending: matches.filter((a) => a.status === "requested"),
+      confirmed: matches.filter((a) => a.status === "accepted"),
+    });
   }
   return days;
+}
+
+export function listAvailability(counsellorId: string): AvailabilitySlot[] {
+  return load().availability.filter((a) => a.counsellorId === counsellorId);
+}
+
+export function addAvailabilitySlot(counsellorId: string, startIso: string): AvailabilitySlot {
+  const db = load();
+  const slot: AvailabilitySlot = { id: `av-${crypto.randomUUID()}`, counsellorId, startIso };
+  db.availability.push(slot);
+  save(db);
+  return slot;
+}
+
+/** Blocked only if the slot has a confirmed appointment — the one thing a counsellor can't undo from here. */
+export function removeAvailabilitySlot(id: string): { ok: true } | { error: string } {
+  const db = load();
+  const slot = db.availability.find((a) => a.id === id);
+  if (!slot) return { error: "Slot not found." };
+  const hasConfirmed = db.appointments.some((a) => a.counsellorId === slot.counsellorId && a.startIso === slot.startIso && a.status === "accepted");
+  if (hasConfirmed) return { error: "This slot has a confirmed session — cancel that session first." };
+
+  // Any pending requests on it are orphaned by the removal — decline them so nothing is left dangling.
+  const orphaned = db.appointments.filter((a) => a.counsellorId === slot.counsellorId && a.startIso === slot.startIso && a.status === "requested");
+  for (const appt of orphaned) {
+    appt.status = "declined";
+    appt.reason = "Counsellor removed this time slot";
+    postAutoMessage(db, appt, "counsellor", appt.reason);
+  }
+  db.availability = db.availability.filter((a) => a.id !== id);
+  save(db);
+  return { ok: true };
 }
 
 export function listAppointmentsForCounsellor(counsellorId: string): AppointmentRecord[] {
@@ -256,16 +313,60 @@ export function requestAppointment(studentId: string, counsellorId: string, star
   return record;
 }
 
-export function respondToAppointment(id: string, decision: "accepted" | "declined"): void {
+/** A student pulling back their own not-yet-confirmed request — no reason needed, nothing was promised yet. */
+export function withdrawRequest(id: string): void {
   const db = load();
   const appt = db.appointments.find((a) => a.id === id);
-  if (appt) { appt.status = decision; save(db); }
+  if (appt && appt.status === "requested") { appt.status = "cancelled"; save(db); }
 }
 
-export function cancelAppointment(id: string): void {
+/** Accepting one request auto-declines every other pending request on the same slot — only one student can have it. */
+export function acceptAppointment(id: string): void {
   const db = load();
   const appt = db.appointments.find((a) => a.id === id);
-  if (appt) { appt.status = "cancelled"; save(db); }
+  if (!appt) return;
+  appt.status = "accepted";
+  const siblings = db.appointments.filter(
+    (a) => a.id !== id && a.counsellorId === appt.counsellorId && a.startIso === appt.startIso && a.status === "requested",
+  );
+  for (const sibling of siblings) {
+    sibling.status = "declined";
+    sibling.reason = "This time was given to another student";
+    postAutoMessage(db, sibling, "counsellor", sibling.reason);
+  }
+  save(db);
+}
+
+export function declineAppointment(id: string, reason: string): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === id);
+  if (!appt) return;
+  appt.status = "declined";
+  appt.reason = reason;
+  postAutoMessage(db, appt, "counsellor", reason);
+  save(db);
+}
+
+/** Cancelling a CONFIRMED session — either side can do this, both need to give a reason. */
+export function cancelConfirmedAppointment(id: string, reason: string, by: Role): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === id);
+  if (!appt) return;
+  appt.status = "cancelled";
+  appt.reason = reason;
+  postAutoMessage(db, appt, by, reason);
+  save(db);
+}
+
+function postAutoMessage(db: Db, appt: AppointmentRecord, sender: Role, reason: string): void {
+  db.messages.push({
+    id: `msg-${crypto.randomUUID()}`,
+    studentId: appt.studentId,
+    counsellorId: appt.counsellorId,
+    sender,
+    text: `Cancelled slot for: ${reason} — auto-generated`,
+    atIso: new Date().toISOString(),
+  });
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────
