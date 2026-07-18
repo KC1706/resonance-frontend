@@ -50,7 +50,7 @@ export function Tag({
   );
 }
 
-/** The recurring four-up metric tile (Home, oversight, commercial…). */
+/** The recurring four-up metric tile (Home, Caseload, etc.). */
 export function StatCard({
   label,
   value,

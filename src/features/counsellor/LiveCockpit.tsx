@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
-import { transcript, liveFacets, cockpit } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function LiveCockpit() {
   const navigate = useNavigate();
+  const { transcript, liveFacets, cockpit } = useAppData();
   const [minimal, setMinimal] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [sec, setSec] = useState(42 * 60 + 14);

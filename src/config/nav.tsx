@@ -4,7 +4,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type PersonaId = "counsellor" | "student" | "oversight" | "commercial";
+export type PersonaId = "counsellor" | "student";
 
 export interface NavItem {
   to: string;
@@ -48,11 +48,9 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       { to: "/student/data", label: "My data & consent", icon: ShieldCheck },
     ],
   },
-  oversight: { id: "oversight", label: "Campus · Oversight", home: "/oversight", nav: [] },
-  commercial: { id: "commercial", label: "Commercial · CX/Sales", home: "/commercial", nav: [] },
 };
 
-export const PERSONA_ORDER: PersonaId[] = ["counsellor", "oversight", "student", "commercial"];
+export const PERSONA_ORDER: PersonaId[] = ["counsellor", "student"];
 
 export function personaFromPath(pathname: string): PersonaId {
   const seg = pathname.split("/")[1] as PersonaId;

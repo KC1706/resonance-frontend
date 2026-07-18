@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
-import { studentStrengths, studentRes } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function StudentHome() {
   const navigate = useNavigate();
+  const { studentStrengths, studentRes } = useAppData();
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 38 }}>Hi Aarav.</h1>

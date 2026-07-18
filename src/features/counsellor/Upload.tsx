@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint } from "@/components/Blueprint";
-import { uploads } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function Upload() {
   const navigate = useNavigate();
+  const { uploads } = useAppData();
   return (
     <div style={{ maxWidth: 1020, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       <div style={{ marginBottom: "var(--space-6)" }}>

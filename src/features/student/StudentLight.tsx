@@ -1,5 +1,5 @@
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
-import { studentStrengths, studentRes } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function StudentSessions() {
   return (
@@ -55,6 +55,7 @@ export function StudentCheckin() {
 }
 
 export function StudentProgress() {
+  const { studentStrengths } = useAppData();
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My progress</h1>
@@ -77,6 +78,7 @@ export function StudentProgress() {
 }
 
 export function StudentResources() {
+  const { studentRes } = useAppData();
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>Resources</h1>

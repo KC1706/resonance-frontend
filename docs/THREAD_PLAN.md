@@ -31,14 +31,15 @@ Thread 4   Student Longitudinal Profile                     ✅ done
 Thread 5   Upload & Analyze + Caseload                      ✅ done
 Thread 6   Student core: Home · Get help · Data & consent   ✅ done
 Thread 7   Student depth: Sessions · Check-in · Progress · Resources  ✅ done
-Thread 8   Oversight: Overview + Cohort trends (institution tier)     ✅ done
-Thread 9   Oversight: Triage · load · supervision (cell tier)         ✅ done
-Thread 10  Commercial: Conversation warehouse               ✅ done
+Thread 8   Oversight: Overview + Cohort trends (institution tier)     ✗ removed — scope narrowed to Counsellor + Student
+Thread 9   Oversight: Triage · load · supervision (cell tier)         ✗ removed — scope narrowed to Counsellor + Student
+Thread 10  Commercial: Conversation warehouse               ✗ removed — scope narrowed to Counsellor + Student
 Thread 11  Auth · onboarding · real data layer              ▢ next
 ```
 
-Threads 8–9 ship as **one role-scoped Oversight screen** with a Cell ↔ Institution
-scope toggle, matching the merged spec.
+Oversight and Commercial personas have been removed from the app for now (see
+`AppData`/`AppDataProvider` in `src/context/AppDataContext.tsx` for the current
+data-layer shape). `docs/Oversight_Dashboard_Feature_Design.md` has been retired.
 
 ## What each thread delivered
 
@@ -46,7 +47,8 @@ scope toggle, matching the merged spec.
   `src/styles/industry.css` ports the original tokens + component classes verbatim.
   Persona-adaptive shell (`AppShell` + `Sidebar`) whose nav/default-screen change by
   role. `<Blueprint>` primitive renders the framed card + registration marks. Mock
-  data seam (`src/data/mock.ts`) a real API replaces in Thread 11.
+  data seam (`src/data/`, exposed via `AppDataProvider`/`useAppData()`) a real API
+  replaces in Thread 11.
 - **1 · Live Cockpit** — session bar (REC, live clock, consent, safety pill,
   full/minimal), diarised transcript with low-confidence flags, guidance hero (crisis
   protocol card, "what the student is thinking", suggested move, avoid, live facet
@@ -64,19 +66,15 @@ scope toggle, matching the merged spec.
   My-data-&-consent centre (revoke/export/delete, who-can-see-what).
 - **7 · Student depth** — Sessions, Check-in & journal, My progress (strengths only),
   Resources.
-- **8–9 · Oversight** — scope toggle enforcing Cell (identified, audited) vs
-  Institution (aggregate, k-anonymity); triage columns, counsellor load/burnout,
-  supervision, exam-calendar trend, hotspots.
-- **10 · Commercial** — searchable conversation warehouse, psychographic call table,
-  emerging themes — the one-engine-three-markets proof.
 
 ## Thread 11 — Auth, onboarding & real data (next)
 
 Deferred on purpose (demo-first). Sign-in shell with SSO + pre-login crisis link;
 student **consent-before-content** gate; counsellor setup checklist → practice
 session; role-scoped routing + MFA for identified-data roles. Then replace
-`src/data/mock.ts` with an API client (loading/empty/error states) and the safety
-fallback: any error on a user-facing safety path degrades to the human contact card.
+`src/data/` with an API client (loading/empty/error states) behind the existing
+`AppDataProvider` seam, and the safety fallback: any error on a user-facing safety
+path degrades to the human contact card.
 
 ## Ground rules (carried from `ENGINEERING_CONVENTIONS.md`)
 

@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, Tag } from "@/components/Blueprint";
 import { state, tierStyle } from "@/lib/state";
-import { caseload } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function Caseload() {
   const navigate = useNavigate();
+  const { caseload } = useAppData();
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "var(--space-4)" }}>

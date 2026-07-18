@@ -1,8 +1,9 @@
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
-import { trend, radar, domains, balance, profileThemes, sessions } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function Profile() {
+  const { trend, radar, domains, balance, profileThemes, sessions } = useAppData();
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       {/* Header */}

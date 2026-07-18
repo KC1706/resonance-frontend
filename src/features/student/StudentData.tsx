@@ -1,8 +1,9 @@
 import { Blueprint, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
-import { dataItems, whoSees, consentLog } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 export function StudentData() {
+  const { dataItems, whoSees, consentLog } = useAppData();
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My data &amp; consent</h1>

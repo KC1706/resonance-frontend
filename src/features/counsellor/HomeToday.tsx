@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, StatCard, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
-import { homeStats, schedule, needsAttention, actions } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 const tierTag = (tier: string) => {
   if (tier === "WATCH") return { background: state.watch.bg, color: state.watch.fg };
@@ -11,6 +11,7 @@ const tierTag = (tier: string) => {
 
 export function HomeToday() {
   const navigate = useNavigate();
+  const { homeStats, schedule, needsAttention, actions } = useAppData();
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       {/* Header */}

@@ -1,18 +1,18 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { PERSONAS, PERSONA_ORDER, personaFromPath, type PersonaId } from "@/config/nav";
-import { counsellor } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 /**
  * Persona-adaptive shell nav, ported from the prototype sidebar: brand mark,
- * a workspace persona switch, a per-persona nav list (counsellor & student
- * only; oversight/commercial are single-page), the facet-engine trust badge,
- * and the account row.
+ * a workspace persona switch, a per-persona nav list, the facet-engine trust
+ * badge, and the account row.
  */
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const active = personaFromPath(location.pathname);
   const persona = PERSONAS[active];
+  const { counsellor } = useAppData();
 
   return (
     <aside

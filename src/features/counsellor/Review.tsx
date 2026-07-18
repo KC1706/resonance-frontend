@@ -1,6 +1,6 @@
 import { Blueprint, Kicker } from "@/components/Blueprint";
 import { state } from "@/lib/state";
-import { reviewDeltas } from "@/data/mock";
+import { useAppData } from "@/context/AppDataContext";
 
 const NOTE = `S: Reports ongoing sleep disruption and rumination about endsem results; feels isolated from peers ("only one struggling"). Discloses guilt toward parents and passive hopelessness ("no point"); denies intent or plan on direct enquiry.
 O: Flat affect, low energy; engaged and honest once trust established. Talk-ratio 58% counsellor. Sleep homework not completed.
@@ -8,6 +8,7 @@ A: Worsening low mood with academic-anxiety driver; emergent hopelessness — ri
 P: Safety follow-up within 48h; sleep support; reframe peer-comparison next session. Not a diagnostic screen — see resources routed.`;
 
 export function Review() {
+  const { reviewDeltas } = useAppData();
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       <div style={{ marginBottom: "var(--space-4)" }}>
