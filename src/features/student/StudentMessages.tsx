@@ -6,7 +6,7 @@ import { getThread, sendMessage } from "@/data/db";
 
 /**
  * Chat with your counsellor, any time — booked session or not. This is a
- * regular text chat: it is not analyzed the way a recorded session is.
+ * regular text chat: it is not analyzed the way an audio session is.
  */
 export function StudentMessages() {
   const { identity } = useAppData();

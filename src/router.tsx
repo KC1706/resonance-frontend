@@ -11,12 +11,10 @@ import { Caseload } from "@/features/counsellor/Caseload";
 import { Calendar } from "@/features/counsellor/Calendar";
 import { Messages } from "@/features/counsellor/Messages";
 import { StudentHome } from "@/features/student/StudentHome";
-import { StudentHelp } from "@/features/student/StudentHelp";
-import { StudentData } from "@/features/student/StudentData";
 import { StudentMessages } from "@/features/student/StudentMessages";
 import { StudentOpportunities } from "@/features/student/StudentOpportunities";
 import {
-  StudentSessions, StudentCheckin, StudentProgress, StudentResources,
+  StudentSessions, StudentCheckin, StudentProgress,
 } from "@/features/student/StudentLight";
 
 export const router = createBrowserRouter([
@@ -42,14 +40,15 @@ export const router = createBrowserRouter([
 
           // Student
           { path: "student", element: <StudentHome /> },
-          { path: "student/help", element: <StudentHelp /> },
           { path: "student/sessions", element: <StudentSessions /> },
           { path: "student/messages", element: <StudentMessages /> },
           { path: "student/checkin", element: <StudentCheckin /> },
           { path: "student/progress", element: <StudentProgress /> },
           { path: "student/opportunities", element: <StudentOpportunities /> },
-          { path: "student/resources", element: <StudentResources /> },
-          { path: "student/data", element: <StudentData /> },
+          // Retired screens folded into Home / My progress — keep old links from 404ing.
+          { path: "student/help", element: <Navigate to="/student" replace /> },
+          { path: "student/resources", element: <Navigate to="/student/progress" replace /> },
+          { path: "student/data", element: <Navigate to="/student" replace /> },
 
           { path: "*", element: <Navigate to="/counsellor" replace /> },
         ],

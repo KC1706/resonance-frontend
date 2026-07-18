@@ -44,7 +44,7 @@ export function StudentSessions() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My sessions</h1>
-      <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Book, join, and set what's captured — your choice, every time.</p>
+      <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Book, join, or reschedule with your counsellor.</p>
 
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <Kicker>Upcoming</Kicker>
@@ -53,7 +53,6 @@ export function StudentSessions() {
           <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
             <div>
               <h4 style={{ margin: 0, fontSize: 14 }}>{formatWeekdayDate(new Date(a.startIso))} · {formatClock(new Date(a.startIso))} · Dr. Priya Das</h4>
-              <div className="text-muted" style={{ fontSize: 12 }}>Recording: your choice at start</div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <Tag style={apptTag(a.status)}>{a.status === "accepted" ? "Confirmed" : "Waiting on counsellor"}</Tag>
@@ -106,17 +105,11 @@ export function StudentCheckin() {
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>Check-in &amp; journal</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Optional and pressure-free — no streaks, no targets.</p>
-      <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <h4 style={{ margin: "0 0 12px" }}>How's today feeling?</h4>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Good", "Okay", "Mixed", "Heavy"].map((m) => <button key={m} className="btn btn-secondary" style={{ flex: 1 }}>{m}</button>)}
-        </div>
-      </Blueprint>
       <Blueprint style={{ padding: "var(--space-4)" }}>
         <h4 style={{ margin: "0 0 8px" }}>A few words, if you like</h4>
         <textarea className="input" style={{ minHeight: 120 }} placeholder="This stays private unless you choose to share it with your counsellor." />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-          <span className="text-muted" style={{ fontSize: 11.5 }}>Private by default · revocable</span>
+          <span className="text-muted" style={{ fontSize: 11.5 }}>Private by default</span>
           <button className="btn btn-primary">Save</button>
         </div>
       </Blueprint>
@@ -124,10 +117,11 @@ export function StudentCheckin() {
   );
 }
 
+/** Merges the old separate "Resources" screen in — one continuous, warm story instead of two stops. */
 export function StudentProgress() {
-  const { studentStrengths } = useAppData();
+  const { studentStrengths, studentRes } = useAppData();
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-8)" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My progress</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>This is about effort and self-awareness — not scores.</p>
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
@@ -136,23 +130,15 @@ export function StudentProgress() {
           {studentStrengths.map((g) => <Tag key={g} className="tag-accent">{g}</Tag>)}
         </div>
       </Blueprint>
-      <Blueprint style={{ padding: "var(--space-4)" }}>
+      <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <h4 style={{ margin: "0 0 var(--space-3)" }}>Gentle milestones</h4>
         <div style={{ fontSize: 13, lineHeight: 1.8 }}>
           A steadier sleep routine · set with Dr. Das<br />Naming what's hard out loud · you did this in your last session
         </div>
         <p className="text-muted" style={{ fontSize: 11, margin: "12px 0 0" }}>You'll never see a score or risk rating here — that's by design.</p>
       </Blueprint>
-    </div>
-  );
-}
 
-export function StudentResources() {
-  const { studentRes } = useAppData();
-  return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
-      <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>Resources</h1>
-      <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Short, usable tools — and a person, whenever you need one.</p>
+      <h3 style={{ margin: "var(--space-2) 0 var(--space-3)" }}>Things that might help</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-4)" }}>
         {studentRes.map((r) => (
           <Blueprint key={r.t} style={{ padding: "var(--space-4)" }}>

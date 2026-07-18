@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
+import { Blueprint, Kicker } from "@/components/Blueprint";
 import { useAppData } from "@/context/AppDataContext";
 
+/**
+ * The one landing screen: warmth, next session, a mood tap, and support
+ * that's never more than a click away — folded in here rather than living
+ * on its own page, so help is reachable the moment a student lands, not one
+ * more tab to find. (Merges the old separate "Get help now" screen.)
+ */
 export function StudentHome() {
   const navigate = useNavigate();
-  const { studentStrengths, studentRes, identity } = useAppData();
+  const { identity } = useAppData();
+  const [supportOpen, setSupportOpen] = useState(false);
+
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 38 }}>Hi {identity.firstName}.</h1>
@@ -18,18 +27,40 @@ export function StudentHome() {
           </div>
           <p style={{ margin: "0 0 12px", fontSize: 13.5 }}>You can reach a person any time — no forms, no waiting.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn btn-primary" onClick={() => navigate("/student/help")}>Talk to someone</button>
-            <button className="btn btn-secondary">Confidential helpline</button>
+            <button className="btn btn-primary">Call a counsellor</button>
+            <button className="btn btn-secondary">National crisis line · 24/7</button>
+            <button className="btn btn-secondary" onClick={() => setSupportOpen((v) => !v)}>
+              {supportOpen ? "Fewer options" : "More ways to get help"}
+            </button>
           </div>
+          {supportOpen && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid color-mix(in srgb, var(--color-text) 10%, transparent)", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500, marginBottom: 6 }}>Steady yourself in a moment</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn-secondary" style={{ flex: 1 }}>Box breathing · 2 min</button>
+                  <button className="btn btn-secondary" style={{ flex: 1 }}>5-4-3-2-1 grounding</button>
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>Trusted contact</div>
+                  <div className="text-muted" style={{ fontSize: 11.5 }}>Choose one person we can help you reach.</div>
+                </div>
+                <button className="btn btn-secondary">Set contact</button>
+              </div>
+              <button className="btn btn-secondary" style={{ width: "100%" }} onClick={() => navigate("/student/messages")}>Message my counsellor</button>
+            </div>
+          )}
         </Blueprint>
 
         <Blueprint style={{ padding: "var(--space-4)" }}>
           <Kicker>Next session</Kicker>
           <h4 style={{ margin: "2px 0" }}>Thursday · 10:30 · Dr. Priya Das</h4>
-          <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>You choose what's recorded before we start — full, notes-only, or off.</p>
+          <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>Looking forward to seeing you.</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-primary">Join</button>
-            <button className="btn btn-secondary">Reschedule</button>
+            <button className="btn btn-primary" onClick={() => navigate("/student/sessions")}>Join</button>
+            <button className="btn btn-secondary" onClick={() => navigate("/student/sessions")}>Reschedule</button>
           </div>
         </Blueprint>
       </div>
@@ -42,34 +73,10 @@ export function StudentHome() {
         </div>
       </Blueprint>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
-        <Blueprint style={{ padding: "var(--space-4)" }}>
-          <h4 style={{ margin: "0 0 var(--space-3)" }}>What you've been working on</h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {studentStrengths.map((g) => <Tag key={g} className="tag-accent">{g}</Tag>)}
-          </div>
-        </Blueprint>
-        <Blueprint style={{ padding: "var(--space-4)" }}>
-          <h4 style={{ margin: "0 0 var(--space-3)" }}>Things that might help</h4>
-          {studentRes.map((r) => (
-            <div key={r.t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{r.t}</div>
-                <div className="text-muted" style={{ fontSize: 11.5 }}>{r.d}</div>
-              </div>
-              <span style={{ color: "var(--color-accent)" }}>→</span>
-            </div>
-          ))}
-        </Blueprint>
-      </div>
-
-      <Blueprint style={{ padding: "12px var(--space-4)", marginTop: "var(--space-4)", display: "flex", alignItems: "center", gap: 10 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.5"><rect x="4" y="10" width="16" height="10" rx="1" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500, fontSize: 13.5 }}>Your data, your control</div>
-          <div className="text-muted" style={{ fontSize: 12 }}>See exactly what's shared and with whom — change or revoke anytime.</div>
-        </div>
-        <button className="btn btn-secondary" onClick={() => navigate("/student/data")}>Open</button>
+      <Blueprint style={{ padding: "var(--space-4)" }}>
+        <h4 style={{ margin: "0 0 4px" }}>Your progress</h4>
+        <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>What you've been working on, and what might help — all in one place.</p>
+        <button className="btn btn-secondary" onClick={() => navigate("/student/progress")}>Open my progress</button>
       </Blueprint>
     </div>
   );
