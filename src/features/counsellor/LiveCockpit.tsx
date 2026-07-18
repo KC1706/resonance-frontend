@@ -4,6 +4,8 @@ import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state } from "@/lib/state";
 import { useSessionPlayback } from "@/hooks/useSessionPlayback";
 import { useSession } from "@/context/SessionContext";
+import { useAppData } from "@/context/AppDataContext";
+import { LUCY_STUDENT_ID } from "@/data/db";
 import { deriveState, SESSION_RESULT, SESSION_END, CLIENT } from "./liveSession";
 
 const SAMPLE_SRC = "/lucy-session.mp3";
@@ -19,6 +21,7 @@ const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${Str
 export function LiveCockpit() {
   const navigate = useNavigate();
   const { complete, clear } = useSession();
+  const { identity } = useAppData();
   const { audioRef, status, time, load, start, pause, reset, seek } = useSessionPlayback();
   const [minimal, setMinimal] = useState(false);
   const [fileName, setFileName] = useState<string>("");
@@ -32,10 +35,10 @@ export function LiveCockpit() {
     : { fg: state.watch.fg, stroke: state.watch.fg, bg: state.watch.bg, title: "Safety check — passive hopelessness",
         lead: "Passive hopelessness and worthlessness detected (“what's the point… I don't deserve to be here”). Stay calm and present; check safety directly and supportively. Not a clinical screen — route to support if risk rises." };
 
-  // Once the scripted session finishes, persist its result so Review + Profile
-  // generate from it.
+  // Once the scripted session finishes, persist its result — to Lucy's real
+  // student record in db.ts — so Review + Profile generate from it.
   useEffect(() => {
-    if (status === "done") complete(SESSION_RESULT);
+    if (status === "done" && identity.recordId) complete(LUCY_STUDENT_ID, identity.recordId, SESSION_RESULT);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -50,7 +53,10 @@ export function LiveCockpit() {
     load(SAMPLE_SRC);
   }
   function endAndReview() {
-    complete(SESSION_RESULT);
+    // If the session already ran to completion, the effect above already persisted it —
+    // this button also ends things early (from the session bar), so only write here
+    // if that hasn't happened yet, to avoid a duplicate session record.
+    if (status !== "done" && identity.recordId) complete(LUCY_STUDENT_ID, identity.recordId, SESSION_RESULT);
     navigate("/counsellor/review");
   }
   function newSession() {

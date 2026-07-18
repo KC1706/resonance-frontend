@@ -75,6 +75,23 @@ export interface CheckinEntry {
   atIso: string;
 }
 
+/** A completed live-session write-up — what the Cockpit produces, Review shows, and Profile accumulates. */
+export interface SessionRecord {
+  id: string;
+  studentId: string;
+  counsellorId: string;
+  atIso: string;
+  sessionLabel: string;
+  durationLabel: string;
+  firstSession: boolean;
+  index: number;
+  keyMomentTs: string;
+  keyMomentText: string;
+  themes: string[];
+  readings: Array<{ arrow: string; name: string; level: string; tone: "esc" | "watch"; quote: string; ts: string }>;
+  note: string;
+}
+
 /** A slot the counsellor has opened up — students can only request against these. */
 export interface AvailabilitySlot {
   id: string;
@@ -113,9 +130,13 @@ interface Db {
   opportunities: OpportunityRecord[];
   journalEntries: JournalEntry[];
   checkins: CheckinEntry[];
+  sessions: SessionRecord[];
 }
 
-const DB_KEY = "db:v6";
+const DB_KEY = "db:v7";
+
+/** The Live Cockpit's scripted client (see features/counsellor/liveSession.ts) — a real student like any other. */
+export const LUCY_STUDENT_ID = "s-lucy";
 
 /** Starting hours so the calendar isn't empty on first login — the counsellor edits from here. */
 const DEFAULT_DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
@@ -133,6 +154,7 @@ function seed(): Db {
     { id: "u-sana", role: "student", email: "student6@campusos.demo", password: "demo1234", name: "Sana R." },
     { id: "u-meera", role: "student", email: "student7@campusos.demo", password: "demo1234", name: "Meera S." },
     { id: "u-ishaan", role: "student", email: "student8@campusos.demo", password: "demo1234", name: "Ishaan T." },
+    { id: "u-lucy", role: "student", email: "student9@campusos.demo", password: "demo1234", name: "Lucy H." },
   ];
   const counsellors: CounsellorRecord[] = [
     { id: "c-priya", userId: "u-priya", initials: "PD", title: "Wellness Cell · IIT KGP" },
@@ -177,6 +199,13 @@ function seed(): Db {
       id: "s-ishaan", userId: "u-ishaan", code: "I-076", dept: "Maths · Y3", assignedCounsellorId: "c-priya",
       skills: ["Statistics"], domains: ["Mathematics"],
       caseNote: { tier: "low", wellnessIndex: 69, trendDelta: 1, reason: "Maintenance sessions" },
+    },
+    {
+      // The Live Cockpit's scripted client — cold-start until her intake session (lucy-session.mp3) completes,
+      // at which point applySessionToStudent() below fills this in for real.
+      id: LUCY_STUDENT_ID, userId: "u-lucy", code: "L-207", dept: "English · Y2", assignedCounsellorId: "c-priya",
+      skills: [], domains: ["English Literature"],
+      caseNote: { tier: "low", wellnessIndex: 0, trendDelta: 0, reason: "Baseline pending — intake session not yet run" },
     },
   ];
 
@@ -230,6 +259,9 @@ function seed(): Db {
     requestedAt("s-dev", 1, 10, 0),
     requestedAt("s-kabir", 1, 10, 0),
     requestedAt("s-sana", 2, 14, 0),
+    // Lucy's intake — the Live Cockpit's scripted session, playable today.
+    // (Shares a slot time with Meera's — a slot can hold more than one confirmed student.)
+    acceptedAt(LUCY_STUDENT_ID, 0, 15, 30),
   ];
 
   const opportunities: OpportunityRecord[] = [
@@ -241,7 +273,7 @@ function seed(): Db {
     { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
   ];
 
-  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [] };
+  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [], sessions: [] };
 }
 
 /** Fields added to the schema after some browsers already had this key cached — never crash on a stale shape. */
@@ -252,6 +284,7 @@ function backfill(db: Db): Db {
   db.opportunities ??= [];
   db.journalEntries ??= [];
   db.checkins ??= [];
+  db.sessions ??= [];
   return db;
 }
 
@@ -470,6 +503,57 @@ export function getTodaysAppointments(counsellorId: string, from: Date = new Dat
 /** Trending down with nothing booked — the quiet decliners, computed from the same caseload rows Caseload shows. */
 export function getNeedsAttention(counsellorId: string, from: Date = new Date()): CaseloadRow[] {
   return getCaseloadForCounsellor(counsellorId, from).filter((r) => r.trendDelta < 0 && !r.nextIso);
+}
+
+// ── Sessions (Live Cockpit → Review → Profile write-through) ────────────────
+
+function tierFromIndex(index: number): Tier {
+  if (index < 50) return "high";
+  if (index < 65) return "medium";
+  return "low";
+}
+
+export function listSessionsForStudent(studentId: string): SessionRecord[] {
+  return load().sessions
+    .filter((s) => s.studentId === studentId)
+    .sort((a, b) => b.atIso.localeCompare(a.atIso));
+}
+
+export function getLatestSessionForStudent(studentId: string): SessionRecord | null {
+  const sessions = listSessionsForStudent(studentId);
+  return sessions[0] ?? null;
+}
+
+/**
+ * The moment a live session ends, this is what makes it real: a durable
+ * SessionRecord in that student's history, and their caseNote (index/tier/
+ * trend/reason) updated to match — instead of the result only living in
+ * whatever component happened to trigger it.
+ */
+export function applySessionToStudent(
+  studentId: string,
+  counsellorId: string,
+  input: Omit<SessionRecord, "id" | "studentId" | "counsellorId" | "atIso">,
+): SessionRecord {
+  const db = load();
+  const record: SessionRecord = {
+    id: `sess-${crypto.randomUUID()}`, studentId, counsellorId, atIso: new Date().toISOString(), ...input,
+  };
+  db.sessions.push(record);
+
+  const student = db.students.find((s) => s.id === studentId);
+  if (student) {
+    const previousIndex = student.caseNote.wellnessIndex;
+    const worst = input.readings.find((r) => r.tone === "esc") ?? input.readings[0];
+    student.caseNote = {
+      tier: tierFromIndex(input.index),
+      wellnessIndex: input.index,
+      trendDelta: input.firstSession ? 0 : input.index - previousIndex,
+      reason: worst ? `${worst.name} flagged${input.firstSession ? " at intake" : ""}` : "Session recorded",
+    };
+  }
+  save(db);
+  return record;
 }
 
 export function requestAppointment(studentId: string, counsellorId: string, startIso: string): AppointmentRecord {

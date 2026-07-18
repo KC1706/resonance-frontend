@@ -4,7 +4,7 @@ import { state, tierStyle } from "@/lib/state";
 import { formatRelative } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
 import { useSession } from "@/context/SessionContext";
-import { getCaseloadForCounsellor, type CaseloadRow } from "@/data/db";
+import { getCaseloadForCounsellor, getLatestSessionForStudent, LUCY_STUDENT_ID, type CaseloadRow } from "@/data/db";
 import { PROFILE, CLIENT } from "./liveSession";
 
 const toneCol = (tone: "esc" | "watch") => (tone === "esc" ? state.esc.fg : state.watch.fg);
@@ -22,11 +22,29 @@ export function Profile() {
     const row = appData.identity.recordId
       ? getCaseloadForCounsellor(appData.identity.recordId).find((r) => r.student.id === studentId)
       : undefined;
-    if (row) return <CaseloadStudentProfile row={row} data={appData} />;
+    if (row) {
+      // Lucy is the one student with a real, session-derived profile (from the Live
+      // Cockpit's scripted intake) — show that instead of the shared demo template.
+      if (row.student.id === LUCY_STUDENT_ID) {
+        const latest = getLatestSessionForStudent(LUCY_STUDENT_ID);
+        if (latest) return <SessionProfile data={appData} result={{ themes: latest.themes }} />;
+        return (
+          <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
+            <h2 style={{ margin: 0 }}>{row.name}</h2>
+            <p className="text-muted" style={{ margin: "4px 0 0", fontSize: 14 }}>{row.student.code} · {row.student.dept}</p>
+            <Blueprint style={{ padding: "var(--space-8)", textAlign: "center", marginTop: "var(--space-6)" }}>
+              <p className="text-muted" style={{ margin: "0 0 14px", fontSize: 13.5 }}>No sessions recorded yet — her intake hasn't run.</p>
+              <button className="btn btn-primary" onClick={() => navigate("/counsellor/cockpit")}>Go to Live Cockpit</button>
+            </Blueprint>
+          </div>
+        );
+      }
+      return <CaseloadStudentProfile row={row} data={appData} />;
+    }
   }
 
   // Opened from a completed live session (Review → Add to profile) → session baseline.
-  if (result) return <SessionProfile data={appData} result={result} />;
+  if (result) return <SessionProfile data={appData} result={{ themes: result.themes }} />;
 
   // No context → nothing to show yet.
   return (
@@ -192,7 +210,7 @@ function CaseloadStudentProfile({ row, data }: { row: CaseloadRow; data: ReturnT
    The just-completed live session's client (Review → Add to profile): an
    intake baseline built from that session (no trend yet).
    ──────────────────────────────────────────────────────────────────────────── */
-function SessionProfile({ data, result }: { data: ReturnType<typeof useAppData>; result: NonNullable<ReturnType<typeof useSession>["result"]> }) {
+function SessionProfile({ data, result }: { data: ReturnType<typeof useAppData>; result: { themes: string[] } }) {
   const { radar } = data;
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
