@@ -2,6 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Blueprint, Kicker } from "@/components/Blueprint";
 import { useAppData } from "@/context/AppDataContext";
+import { formatClock, formatWeekdayDate } from "@/lib/dates";
+import {
+  listAppointmentsForStudent, addCheckin, getCheckinForToday, type CheckinMood,
+} from "@/data/db";
+
+const MOODS: CheckinMood[] = ["Good", "Okay", "Mixed", "Heavy"];
 
 /**
  * The one landing screen: warmth, next session, a mood tap, and support
@@ -13,6 +19,21 @@ export function StudentHome() {
   const navigate = useNavigate();
   const { identity } = useAppData();
   const [supportOpen, setSupportOpen] = useState(false);
+  const [, forceRerender] = useState(0);
+
+  const upcoming = identity.recordId
+    ? listAppointmentsForStudent(identity.recordId)
+        .filter((a) => a.status === "accepted" && new Date(a.startIso).getTime() > Date.now())
+        .sort((a, b) => a.startIso.localeCompare(b.startIso))
+    : [];
+  const next = upcoming[0];
+  const todaysCheckin = identity.recordId ? getCheckinForToday(identity.recordId) : null;
+
+  function submitCheckin(mood: CheckinMood) {
+    if (!identity.recordId) return;
+    addCheckin(identity.recordId, mood);
+    forceRerender((n) => n + 1);
+  }
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "var(--space-8)" }}>
@@ -27,8 +48,7 @@ export function StudentHome() {
           </div>
           <p style={{ margin: "0 0 12px", fontSize: 13.5 }}>You can reach a person any time — no forms, no waiting.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn btn-primary">Call a counsellor</button>
-            <button className="btn btn-secondary">National crisis line · 24/7</button>
+            <button className="btn btn-primary" onClick={() => navigate("/student/messages")}>Message my counsellor</button>
             <button className="btn btn-secondary" onClick={() => setSupportOpen((v) => !v)}>
               {supportOpen ? "Fewer options" : "More ways to get help"}
             </button>
@@ -49,28 +69,46 @@ export function StudentHome() {
                 </div>
                 <button className="btn btn-secondary">Set contact</button>
               </div>
-              <button className="btn btn-secondary" style={{ width: "100%" }} onClick={() => navigate("/student/messages")}>Message my counsellor</button>
             </div>
           )}
         </Blueprint>
 
         <Blueprint style={{ padding: "var(--space-4)" }}>
           <Kicker>Next session</Kicker>
-          <h4 style={{ margin: "2px 0" }}>Thursday · 10:30 · Dr. Priya Das</h4>
-          <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>Looking forward to seeing you.</p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-primary" onClick={() => navigate("/student/sessions")}>Join</button>
-            <button className="btn btn-secondary" onClick={() => navigate("/student/sessions")}>Reschedule</button>
-          </div>
+          {next ? (
+            <>
+              <h4 style={{ margin: "2px 0" }}>{formatWeekdayDate(new Date(next.startIso))} · {formatClock(new Date(next.startIso))} · Dr. Priya Das</h4>
+              <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>
+                {next.pendingRescheduleIso
+                  ? `Asked to move to ${formatWeekdayDate(new Date(next.pendingRescheduleIso))} · ${formatClock(new Date(next.pendingRescheduleIso))} — waiting on your counsellor.`
+                  : "Looking forward to seeing you."}
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" onClick={() => navigate("/student/messages")}>Message counsellor</button>
+                <button className="btn btn-secondary" onClick={() => navigate("/student/sessions")}>Reschedule</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-muted" style={{ margin: "2px 0 12px", fontSize: 13 }}>Nothing booked yet.</p>
+              <button className="btn btn-secondary" onClick={() => navigate("/student/sessions")}>Book a session</button>
+            </>
+          )}
         </Blueprint>
       </div>
 
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <h4 style={{ margin: "0 0 4px" }}>How's today feeling?</h4>
-        <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>Just for you, unless you choose to share it.</p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Good", "Okay", "Mixed", "Heavy"].map((m) => <button key={m} className="btn btn-secondary" style={{ flex: 1 }}>{m}</button>)}
-        </div>
+        {todaysCheckin ? (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>You've already checked in today — feeling {todaysCheckin.mood.toLowerCase()}. Come back tomorrow.</p>
+        ) : (
+          <>
+            <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 12.5 }}>Just for you, unless you choose to share it.</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {MOODS.map((m) => <button key={m} className="btn btn-secondary" style={{ flex: 1 }} onClick={() => submitCheckin(m)}>{m}</button>)}
+            </div>
+          </>
+        )}
       </Blueprint>
 
       <Blueprint style={{ padding: "var(--space-4)" }}>

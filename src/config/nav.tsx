@@ -1,5 +1,5 @@
 import {
-  Home, AudioLines, FileText, UserRound, Upload, Users,
+  Home, AudioLines, FileText, UserRound, Users,
   CalendarDays, NotebookPen, Sparkles,
   MessageCircle, Briefcase,
   type LucideIcon,
@@ -31,7 +31,6 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       { to: "/counsellor/cockpit", label: "Live Cockpit", icon: AudioLines, live: true },
       { to: "/counsellor/review", label: "Post-Session Review", icon: FileText },
       { to: "/counsellor/profile", label: "Student Profile", icon: UserRound },
-      { to: "/counsellor/upload", label: "Upload & Analyze", icon: Upload },
       { to: "/counsellor/caseload", label: "Caseload", icon: Users },
       { to: "/counsellor/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/counsellor/messages", label: "Messages", icon: MessageCircle },

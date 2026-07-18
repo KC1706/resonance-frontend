@@ -55,6 +55,24 @@ export interface AppointmentRecord {
   status: AppointmentStatus;
   /** Why it was declined/cancelled — required whenever a confirmed slot is cancelled. */
   reason?: string;
+  /** A student-requested new time for this (currently accepted) session, awaiting the counsellor's decision. */
+  pendingRescheduleIso?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  studentId: string;
+  text: string;
+  atIso: string;
+}
+
+export type CheckinMood = "Good" | "Okay" | "Mixed" | "Heavy";
+
+export interface CheckinEntry {
+  id: string;
+  studentId: string;
+  mood: CheckinMood;
+  atIso: string;
 }
 
 /** A slot the counsellor has opened up — students can only request against these. */
@@ -93,9 +111,11 @@ interface Db {
   appointments: AppointmentRecord[];
   messages: MessageRecord[];
   opportunities: OpportunityRecord[];
+  journalEntries: JournalEntry[];
+  checkins: CheckinEntry[];
 }
 
-const DB_KEY = "db:v5";
+const DB_KEY = "db:v6";
 
 /** Starting hours so the calendar isn't empty on first login — the counsellor edits from here. */
 const DEFAULT_DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
@@ -221,7 +241,7 @@ function seed(): Db {
     { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
   ];
 
-  return { users, counsellors, students, availability, appointments, messages, opportunities };
+  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [] };
 }
 
 function load(): Db {
@@ -318,6 +338,8 @@ export interface CalendarSlot {
   startIso: string;
   pending: AppointmentRecord[];
   confirmed: AppointmentRecord[];
+  /** Confirmed sessions elsewhere whose student is asking to move here instead. */
+  rescheduleRequests: AppointmentRecord[];
 }
 
 /** The counsellor's own availability, grouped by day, each slot showing who's requested or confirmed on it. */
@@ -341,6 +363,7 @@ export function getWeekSlots(counsellorId: string, from: Date = new Date()): Rec
       startIso: slot.startIso,
       pending: matches.filter((a) => a.status === "requested"),
       confirmed: matches.filter((a) => a.status === "accepted"),
+      rescheduleRequests: db.appointments.filter((a) => a.counsellorId === counsellorId && a.pendingRescheduleIso === slot.startIso),
     });
   }
   return days;
@@ -365,13 +388,15 @@ export function removeAvailabilitySlot(id: string): { ok: true } | { error: stri
   if (!slot) return { error: "Slot not found." };
   const hasConfirmed = db.appointments.some((a) => a.counsellorId === slot.counsellorId && a.startIso === slot.startIso && a.status === "accepted");
   if (hasConfirmed) return { error: "This slot has a confirmed session — cancel that session first." };
+  const hasIncomingReschedule = db.appointments.some((a) => a.counsellorId === slot.counsellorId && a.pendingRescheduleIso === slot.startIso);
+  if (hasIncomingReschedule) return { error: "A student has asked to move a session here — approve or decline that first." };
 
   // Any pending requests on it are orphaned by the removal — decline them so nothing is left dangling.
   const orphaned = db.appointments.filter((a) => a.counsellorId === slot.counsellorId && a.startIso === slot.startIso && a.status === "requested");
   for (const appt of orphaned) {
     appt.status = "declined";
     appt.reason = "Counsellor removed this time slot";
-    postAutoMessage(db, appt, "counsellor", appt.reason);
+    postAutoMessage(db, appt, "counsellor", `Cancelled slot for: ${appt.reason}`);
   }
   db.availability = db.availability.filter((a) => a.id !== id);
   save(db);
@@ -470,7 +495,7 @@ export function declineAppointment(id: string, reason: string): void {
   if (!appt) return;
   appt.status = "declined";
   appt.reason = reason;
-  postAutoMessage(db, appt, "counsellor", reason);
+  postAutoMessage(db, appt, "counsellor", `Declined for: ${reason}`);
   save(db);
 }
 
@@ -481,19 +506,86 @@ export function cancelConfirmedAppointment(id: string, reason: string, by: Role)
   if (!appt) return;
   appt.status = "cancelled";
   appt.reason = reason;
-  postAutoMessage(db, appt, by, reason);
+  postAutoMessage(db, appt, by, `Cancelled slot for: ${reason}`);
   save(db);
 }
 
-function postAutoMessage(db: Db, appt: AppointmentRecord, sender: Role, reason: string): void {
+/** Student asks to move a CONFIRMED session to a new time — the old time stands until the counsellor decides. */
+export function requestReschedule(appointmentId: string, newStartIso: string): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === appointmentId);
+  if (!appt || appt.status !== "accepted") return;
+  appt.pendingRescheduleIso = newStartIso;
+  save(db);
+}
+
+export function withdrawRescheduleRequest(appointmentId: string): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === appointmentId);
+  if (appt) { appt.pendingRescheduleIso = undefined; save(db); }
+}
+
+/** Approving moves the session in place — the old time is gone, replaced by the new one, not a second entry. */
+export function approveReschedule(appointmentId: string): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === appointmentId);
+  if (!appt || !appt.pendingRescheduleIso) return;
+  const start = new Date(appt.pendingRescheduleIso);
+  const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
+  appt.startIso = start.toISOString();
+  appt.endIso = end.toISOString();
+  appt.pendingRescheduleIso = undefined;
+  save(db);
+}
+
+export function declineReschedule(appointmentId: string, reason: string): void {
+  const db = load();
+  const appt = db.appointments.find((a) => a.id === appointmentId);
+  if (!appt) return;
+  appt.pendingRescheduleIso = undefined;
+  postAutoMessage(db, appt, "counsellor", `Reschedule request declined: ${reason}`);
+  save(db);
+}
+
+function postAutoMessage(db: Db, appt: AppointmentRecord, sender: Role, text: string): void {
   db.messages.push({
     id: `msg-${crypto.randomUUID()}`,
     studentId: appt.studentId,
     counsellorId: appt.counsellorId,
     sender,
-    text: `Cancelled slot for: ${reason} — auto-generated`,
+    text: `${text} — auto-generated`,
     atIso: new Date().toISOString(),
   });
+}
+
+// ── Journal & check-ins ──────────────────────────────────────────────────────
+
+export function addJournalEntry(studentId: string, text: string): JournalEntry {
+  const db = load();
+  const entry: JournalEntry = { id: `jrn-${crypto.randomUUID()}`, studentId, text, atIso: new Date().toISOString() };
+  db.journalEntries.push(entry);
+  save(db);
+  return entry;
+}
+
+/** Most recent first, so a student sees what they wrote most recently at the top. */
+export function listJournalEntries(studentId: string): JournalEntry[] {
+  return load().journalEntries
+    .filter((e) => e.studentId === studentId)
+    .sort((a, b) => b.atIso.localeCompare(a.atIso));
+}
+
+export function addCheckin(studentId: string, mood: CheckinMood): CheckinEntry {
+  const db = load();
+  const entry: CheckinEntry = { id: `chk-${crypto.randomUUID()}`, studentId, mood, atIso: new Date().toISOString() };
+  db.checkins.push(entry);
+  save(db);
+  return entry;
+}
+
+export function getCheckinForToday(studentId: string, from: Date = new Date()): CheckinEntry | null {
+  const todays = load().checkins.filter((c) => c.studentId === studentId && isSameDay(new Date(c.atIso), from));
+  return todays.length ? todays[todays.length - 1] : null;
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────

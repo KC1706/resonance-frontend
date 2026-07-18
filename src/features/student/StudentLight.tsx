@@ -5,6 +5,8 @@ import { useAppData } from "@/context/AppDataContext";
 import { useDialog } from "@/context/DialogContext";
 import {
   getWeekSlots, requestAppointment, withdrawRequest, cancelConfirmedAppointment, listAppointmentsForStudent,
+  requestReschedule, withdrawRescheduleRequest,
+  addJournalEntry, listJournalEntries,
 } from "@/data/db";
 import { formatClock, formatWeekdayDate } from "@/lib/dates";
 
@@ -17,6 +19,7 @@ const apptTag = (status: string) => {
 export function StudentSessions() {
   const { identity } = useAppData();
   const [, forceRerender] = useState(0);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const dialog = useDialog();
 
   if (!identity.assignedCounsellorId || !identity.recordId) {
@@ -35,6 +38,7 @@ export function StudentSessions() {
   const past = myAppointments.filter((a) => new Date(a.startIso).getTime() <= Date.now());
   const days = getWeekSlots(identity.assignedCounsellorId);
   const alreadyRequestedTimes = new Set(myAppointments.map((a) => a.startIso));
+  const reschedulingAppt = reschedulingId ? upcoming.find((a) => a.id === reschedulingId) : undefined;
 
   async function book(startIso: string) {
     const ok = await dialog.confirm(
@@ -43,6 +47,18 @@ export function StudentSessions() {
     );
     if (!ok) return;
     requestAppointment(identity.recordId!, identity.assignedCounsellorId!, startIso);
+    forceRerender((n) => n + 1);
+  }
+
+  async function submitReschedule(startIso: string) {
+    if (!reschedulingId) return;
+    const ok = await dialog.confirm(
+      `Ask to move this session to ${formatWeekdayDate(new Date(startIso))} at ${formatClock(new Date(startIso))}?`,
+      { title: "Request reschedule?", confirmLabel: "Request" },
+    );
+    if (!ok) return;
+    requestReschedule(reschedulingId, startIso);
+    setReschedulingId(null);
     forceRerender((n) => n + 1);
   }
 
@@ -61,6 +77,13 @@ export function StudentSessions() {
     forceRerender((n) => n + 1);
   }
 
+  async function cancelReschedule(id: string) {
+    const ok = await dialog.confirm("Your original time stays as it is.", { title: "Withdraw reschedule request?", confirmLabel: "Withdraw" });
+    if (!ok) return;
+    withdrawRescheduleRequest(id);
+    forceRerender((n) => n + 1);
+  }
+
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My sessions</h1>
@@ -70,20 +93,42 @@ export function StudentSessions() {
         <Kicker>Upcoming</Kicker>
         {upcoming.length === 0 && <p className="text-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>Nothing booked yet — pick a time below.</p>}
         {upcoming.map((a) => (
-          <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
-            <div>
+          <div key={a.id} style={{ padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h4 style={{ margin: 0, fontSize: 14 }}>{formatWeekdayDate(new Date(a.startIso))} · {formatClock(new Date(a.startIso))} · Dr. Priya Das</h4>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Tag style={apptTag(a.status)}>{a.status === "accepted" ? "Confirmed" : "Waiting on counsellor"}</Tag>
+                {a.status === "accepted" && !a.pendingRescheduleIso && (
+                  <button className="btn btn-secondary" onClick={() => setReschedulingId(reschedulingId === a.id ? null : a.id)}>
+                    {reschedulingId === a.id ? "Cancel reschedule" : "Reschedule"}
+                  </button>
+                )}
+                <button className="btn btn-secondary" onClick={() => cancel(a.id, a.status)}>Cancel</button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Tag style={apptTag(a.status)}>{a.status === "accepted" ? "Confirmed" : "Waiting on counsellor"}</Tag>
-              <button className="btn btn-secondary" onClick={() => cancel(a.id, a.status)}>Cancel</button>
-            </div>
+            {a.pendingRescheduleIso && (
+              <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+                <span className="text-muted">
+                  Asked to move to {formatWeekdayDate(new Date(a.pendingRescheduleIso))} · {formatClock(new Date(a.pendingRescheduleIso))} — waiting on your counsellor
+                </span>
+                <button className="btn btn-secondary" style={{ fontSize: 11.5, padding: "3px 8px" }} onClick={() => cancelReschedule(a.id)}>Withdraw</button>
+              </div>
+            )}
           </div>
         ))}
       </Blueprint>
 
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <Kicker>Book a time</Kicker>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Kicker>
+            {reschedulingAppt
+              ? `Pick a new time for ${formatWeekdayDate(new Date(reschedulingAppt.startIso))} · ${formatClock(new Date(reschedulingAppt.startIso))}`
+              : "Book a time"}
+          </Kicker>
+          {reschedulingAppt && (
+            <button className="btn btn-secondary" style={{ fontSize: 11.5, padding: "3px 8px" }} onClick={() => setReschedulingId(null)}>Cancel</button>
+          )}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 }}>
           {Object.entries(days).map(([dayKey, slots]) => (
             <div key={dayKey}>
@@ -93,14 +138,14 @@ export function StudentSessions() {
                 {slots.map((slot) => {
                   // A slot can hold more than one confirmed student (e.g. a group session) — only
                   // a duplicate request from this same student is actually blocked here.
-                  const already = alreadyRequestedTimes.has(slot.startIso);
+                  const already = !reschedulingAppt && alreadyRequestedTimes.has(slot.startIso);
                   const busy = slot.pending.length + slot.confirmed.length > 0;
                   return (
                     <button
                       key={slot.startIso}
                       className="btn btn-secondary"
                       disabled={already}
-                      onClick={() => book(slot.startIso)}
+                      onClick={() => (reschedulingAppt ? submitReschedule(slot.startIso) : book(slot.startIso))}
                       title={already ? "You've already requested this time" : busy ? `${slot.pending.length + slot.confirmed.length} other student(s) also have this time` : undefined}
                       style={{ fontSize: 11.5, padding: "4px 2px", opacity: already ? 0.4 : 1 }}
                     >
@@ -129,16 +174,48 @@ export function StudentSessions() {
 }
 
 export function StudentCheckin() {
+  const { identity } = useAppData();
+  const [draft, setDraft] = useState("");
+  const [, forceRerender] = useState(0);
+
+  const entries = identity.recordId ? listJournalEntries(identity.recordId) : [];
+
+  function save() {
+    if (!identity.recordId || !draft.trim()) return;
+    addJournalEntry(identity.recordId, draft.trim());
+    setDraft("");
+    forceRerender((n) => n + 1);
+  }
+
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>Check-in &amp; journal</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Optional and pressure-free — no streaks, no targets.</p>
-      <Blueprint style={{ padding: "var(--space-4)" }}>
+      <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <h4 style={{ margin: "0 0 8px" }}>A few words, if you like</h4>
-        <textarea className="input" style={{ minHeight: 120 }} placeholder="This stays private unless you choose to share it with your counsellor." />
+        <textarea
+          className="input" style={{ minHeight: 120 }}
+          placeholder="This stays private unless you choose to share it with your counsellor."
+          value={draft} onChange={(e) => setDraft(e.target.value)}
+        />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
           <span className="text-muted" style={{ fontSize: 11.5 }}>Private by default</span>
-          <button className="btn btn-primary">Save</button>
+          <button className="btn btn-primary" onClick={save} disabled={!draft.trim()}>Save</button>
+        </div>
+      </Blueprint>
+
+      <Blueprint style={{ padding: "var(--space-4)" }}>
+        <Kicker>Past entries</Kicker>
+        {entries.length === 0 && <p className="text-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>Nothing written yet.</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+          {entries.map((e) => (
+            <div key={e.id} style={{ padding: "10px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+              <div className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>
+                {formatWeekdayDate(new Date(e.atIso))} · {formatClock(new Date(e.atIso))}
+              </div>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{e.text}</p>
+            </div>
+          ))}
         </div>
       </Blueprint>
     </div>
@@ -175,13 +252,13 @@ export function StudentProgress() {
           </Blueprint>
         ))}
       </div>
-      <Blueprint style={{ padding: "12px var(--space-4)", marginTop: "var(--space-4)", display: "flex", alignItems: "center", gap: 10, background: "color-mix(in srgb, var(--color-accent) 7%, transparent)" }}>
+      {/* <Blueprint style={{ padding: "12px var(--space-4)", marginTop: "var(--space-4)", display: "flex", alignItems: "center", gap: 10, background: "color-mix(in srgb, var(--color-accent) 7%, transparent)" }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 500, fontSize: 13.5 }}>Peer support circles</div>
           <div className="text-muted" style={{ fontSize: 12 }}>Small student groups — a validated first line of campus support.</div>
         </div>
         <button className="btn btn-secondary">Learn more</button>
-      </Blueprint>
+      </Blueprint> */}
     </div>
   );
 }

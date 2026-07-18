@@ -8,6 +8,7 @@ import { useDialog } from "@/context/DialogContext";
 import {
   getWeekSlots, getStudentName, acceptAppointment, declineAppointment,
   cancelConfirmedAppointment, addAvailabilitySlot, removeAvailabilitySlot,
+  approveReschedule, declineReschedule,
   type CalendarSlot,
 } from "@/data/db";
 
@@ -70,6 +71,25 @@ export function Calendar() {
     refresh();
   }
 
+  async function handleApproveReschedule(id: string) {
+    const ok = await dialog.confirm(
+      "The session moves to the new time — the old time is freed up.",
+      { title: "Approve this reschedule?", confirmLabel: "Approve" },
+    );
+    if (!ok) return;
+    approveReschedule(id);
+    refresh();
+  }
+
+  async function handleDeclineReschedule(id: string) {
+    const reason = await dialog.prompt("This is sent to the student — their original time stays as it is.", {
+      title: "Decline this reschedule", placeholder: "Reason for declining…", confirmLabel: "Decline",
+    });
+    if (!reason) return;
+    declineReschedule(id, reason);
+    refresh();
+  }
+
   async function handleRemoveSlot(id: string) {
     const result = removeAvailabilitySlot(id);
     if ("error" in result) await dialog.alert(result.error, { title: "Can't remove this slot" });
@@ -112,6 +132,8 @@ export function Calendar() {
                   onAccept={handleAccept}
                   onDecline={handleDecline}
                   onCancelConfirmed={handleCancelConfirmed}
+                  onApproveReschedule={handleApproveReschedule}
+                  onDeclineReschedule={handleDeclineReschedule}
                   onViewProfile={goToProfile}
                   onMessage={goToMessages}
                 />
@@ -146,7 +168,8 @@ function LegendDot({ color, style }: { color: string; style?: CSSProperties }) {
 }
 
 function SlotCell({
-  slot, isOpen, onToggle, onRemove, onAccept, onDecline, onCancelConfirmed, onViewProfile, onMessage,
+  slot, isOpen, onToggle, onRemove, onAccept, onDecline, onCancelConfirmed,
+  onApproveReschedule, onDeclineReschedule, onViewProfile, onMessage,
 }: {
   slot: CalendarSlot;
   isOpen: boolean;
@@ -155,10 +178,12 @@ function SlotCell({
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
   onCancelConfirmed: (id: string) => void;
+  onApproveReschedule: (id: string) => void;
+  onDeclineReschedule: (id: string) => void;
   onViewProfile: () => void;
   onMessage: (studentId: string) => void;
 }) {
-  const isFree = slot.pending.length === 0 && slot.confirmed.length === 0;
+  const isFree = slot.pending.length === 0 && slot.confirmed.length === 0 && slot.rescheduleRequests.length === 0;
 
   return (
     <div style={{ border: "1px solid var(--color-divider)" }}>
@@ -176,6 +201,11 @@ function SlotCell({
           {slot.pending.length > 0 && (
             <span style={{ background: "var(--state-watch-bg)", color: "var(--state-watch-fg)", borderRadius: 10, fontSize: 10.5, padding: "1px 6px", fontWeight: 600 }}>
               {slot.pending.length}
+            </span>
+          )}
+          {slot.rescheduleRequests.length > 0 && (
+            <span title="Reschedule request(s)" style={{ background: "var(--color-accent-2-100)", color: "var(--color-accent-2-800)", borderRadius: 10, fontSize: 10.5, padding: "1px 6px", fontWeight: 600 }}>
+              ⇄{slot.rescheduleRequests.length}
             </span>
           )}
           {isFree && (
@@ -217,6 +247,25 @@ function SlotCell({
               <div style={{ display: "flex", gap: 4 }}>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: 10.5, padding: "3px 0" }} onClick={() => onAccept(a.id)}>Accept</button>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: 10.5, padding: "3px 0" }} onClick={() => onDecline(a.id)}>Decline</button>
+              </div>
+            </div>
+          ))}
+          {slot.rescheduleRequests.map((a) => (
+            <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button type="button" className="text-muted" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, padding: 0, textDecoration: "underline" }} onClick={onViewProfile}>
+                  {getStudentName(a.studentId)}
+                </button>
+                <button type="button" onClick={() => onMessage(a.studentId)} title="Message student" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "grid" }}>
+                  <MessageCircle size={13} strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="text-muted" style={{ fontSize: 10.5 }}>
+                Wants to move here from {formatWeekdayDate(new Date(a.startIso))} · {formatClock(new Date(a.startIso))}
+              </div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button className="btn btn-primary" style={{ flex: 1, fontSize: 10.5, padding: "3px 0" }} onClick={() => onApproveReschedule(a.id)}>Approve</button>
+                <button className="btn btn-secondary" style={{ flex: 1, fontSize: 10.5, padding: "3px 0" }} onClick={() => onDeclineReschedule(a.id)}>Decline</button>
               </div>
             </div>
           ))}

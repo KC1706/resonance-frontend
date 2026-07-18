@@ -6,7 +6,6 @@ import { HomeToday } from "@/features/counsellor/HomeToday";
 import { LiveCockpit } from "@/features/counsellor/LiveCockpit";
 import { Review } from "@/features/counsellor/Review";
 import { Profile } from "@/features/counsellor/Profile";
-import { Upload } from "@/features/counsellor/Upload";
 import { Caseload } from "@/features/counsellor/Caseload";
 import { Calendar } from "@/features/counsellor/Calendar";
 import { Messages } from "@/features/counsellor/Messages";
@@ -33,10 +32,10 @@ export const router = createBrowserRouter([
           { path: "counsellor/cockpit", element: <LiveCockpit /> },
           { path: "counsellor/review", element: <Review /> },
           { path: "counsellor/profile", element: <Profile /> },
-          { path: "counsellor/upload", element: <Upload /> },
           { path: "counsellor/caseload", element: <Caseload /> },
           { path: "counsellor/calendar", element: <Calendar /> },
           { path: "counsellor/messages", element: <Messages /> },
+          { path: "counsellor/upload", element: <Navigate to="/counsellor" replace /> },
 
           // Student
           { path: "student", element: <StudentHome /> },

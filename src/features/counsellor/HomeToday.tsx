@@ -37,7 +37,7 @@ export function HomeToday() {
     { label: "Sessions today", value: String(todays.length), sub: `${todays.filter((a) => a.tier === "high").length} flagged`, color: undefined as string | undefined },
     { label: "Flagged students", value: String(counts.high), sub: "need attention", color: state.watch.fg },
     { label: "Action items", value: String(actions.length), sub: `${actions.filter((a) => a.due === "today").length} due today`, color: undefined },
-    { label: "New analysis", value: "3", sub: "uploads ready", color: "var(--color-accent)" }, // no upload-processing feature wired yet — illustrative only
+    { label: "Booking requests", value: String(pendingRequests), sub: "waiting on you", color: pendingRequests > 0 ? "var(--color-accent)" : undefined },
   ];
 
   return (

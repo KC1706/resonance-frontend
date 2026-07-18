@@ -129,10 +129,4 @@ export const sessions = [
   { n: "S1", date: "12 Feb", idx: "58", delta: "—", dcol: "var(--color-neutral-600)", moment: "Intake · exam stress", risk: false },
 ];
 
-// ── Upload ────────────────────────────────────────────────────────────────────
-export const uploads = [
-  { name: "session_j190_mar24.m4a", meta: "38 min · English + Hindi", pct: 100, col: "var(--color-accent)", status: "Complete · diarized", done: true },
-  { name: "intake_batch_hall5.zip", meta: "12 files · 6 h 20 m", pct: 64, col: "var(--color-accent)", status: "Processing 8 / 12", done: false },
-  { name: "followup_r104.mp3", meta: "22 min · English", pct: 22, col: state.watch.fg, status: "Diarizing…", done: false },
-];
 
