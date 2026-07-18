@@ -91,18 +91,20 @@ export function StudentSessions() {
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {slots.length === 0 && <span className="text-muted" style={{ fontSize: 10.5 }}>—</span>}
                 {slots.map((slot) => {
-                  const taken = slot.confirmed.length > 0;
+                  // A slot can hold more than one confirmed student (e.g. a group session) — only
+                  // a duplicate request from this same student is actually blocked here.
                   const already = alreadyRequestedTimes.has(slot.startIso);
+                  const busy = slot.pending.length + slot.confirmed.length > 0;
                   return (
                     <button
                       key={slot.startIso}
                       className="btn btn-secondary"
-                      disabled={taken || already}
+                      disabled={already}
                       onClick={() => book(slot.startIso)}
-                      title={already ? "You've already requested this time" : taken ? "No longer available" : slot.pending.length > 0 ? `${slot.pending.length} other student(s) have also requested this` : undefined}
-                      style={{ fontSize: 11.5, padding: "4px 2px", opacity: taken || already ? 0.4 : 1 }}
+                      title={already ? "You've already requested this time" : busy ? `${slot.pending.length + slot.confirmed.length} other student(s) also have this time` : undefined}
+                      style={{ fontSize: 11.5, padding: "4px 2px", opacity: already ? 0.4 : 1 }}
                     >
-                      {formatClock(new Date(slot.startIso))}{!taken && !already && slot.pending.length > 0 ? " •" : ""}
+                      {formatClock(new Date(slot.startIso))}{!already && busy ? " •" : ""}
                     </button>
                   );
                 })}

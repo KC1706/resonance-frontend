@@ -1,7 +1,6 @@
 import {
   createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode,
 } from "react";
-import { Blueprint } from "@/components/Blueprint";
 import { state as tone } from "@/lib/state";
 
 type DialogKind = "alert" | "confirm" | "prompt";
@@ -86,49 +85,47 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       {dialog && (
         <div
           role="presentation"
+          className="dialog-backdrop"
           onKeyDown={(e) => { if (e.key === "Escape") handleSecondary(); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(20, 20, 20, 0.45)",
-            display: "grid", placeItems: "center", zIndex: 1000,
-          }}
+          style={{ zIndex: 1000 }}
           onMouseDown={(e) => { if (e.target === e.currentTarget && dialog.kind !== "alert") handleSecondary(); }}
         >
           <form
+            className="dialog"
             onSubmit={(e) => { e.preventDefault(); if (!requiredBlocked) handlePrimary(); }}
-            style={{ width: 360, maxWidth: "calc(100vw - 32px)" }}
           >
-            <Blueprint style={{ padding: "var(--space-5)", background: "var(--color-bg)" }} elev="lg">
-              {dialog.title && <h4 style={{ margin: "0 0 8px" }}>{dialog.title}</h4>}
-              <p style={{ margin: "0 0 var(--space-4)", fontSize: 13.5, lineHeight: 1.5 }}>{dialog.message}</p>
+            {dialog.title && <div className="dialog-title">{dialog.title}</div>}
+            <p className="dialog-body">{dialog.message}</p>
 
-              {dialog.kind === "prompt" && (
-                <input
-                  ref={inputRef}
-                  className="input"
-                  style={{ marginBottom: "var(--space-4)" }}
-                  placeholder={dialog.placeholder}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                />
-              )}
+            {dialog.kind === "prompt" && (
+              <input
+                ref={inputRef}
+                className="input"
+                placeholder={dialog.placeholder}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+              />
+            )}
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                {dialog.kind !== "alert" && (
-                  <button type="button" className="btn btn-secondary" onClick={handleSecondary}>
-                    {dialog.cancelLabel ?? "Cancel"}
-                  </button>
-                )}
-                <button
-                  ref={confirmRef}
-                  type="submit"
-                  disabled={requiredBlocked}
-                  className="btn btn-primary"
-                  style={dialog.destructive ? { background: tone.esc.fg, borderColor: tone.esc.fg, opacity: requiredBlocked ? 0.5 : 1 } : { opacity: requiredBlocked ? 0.5 : 1 }}
-                >
-                  {dialog.confirmLabel ?? (dialog.kind === "alert" ? "OK" : "Confirm")}
+            <div className="dialog-actions">
+              {dialog.kind !== "alert" && (
+                <button type="button" className="btn btn-secondary" onClick={handleSecondary}>
+                  {dialog.cancelLabel ?? "Cancel"}
                 </button>
-              </div>
-            </Blueprint>
+              )}
+              <button
+                ref={confirmRef}
+                type="submit"
+                disabled={requiredBlocked}
+                className="btn btn-primary"
+                style={{
+                  ...(dialog.destructive ? { background: tone.esc.fg, borderColor: tone.esc.fg } : {}),
+                  opacity: requiredBlocked ? 0.5 : 1,
+                }}
+              >
+                {dialog.confirmLabel ?? (dialog.kind === "alert" ? "OK" : "Confirm")}
+              </button>
+            </div>
           </form>
         </div>
       )}

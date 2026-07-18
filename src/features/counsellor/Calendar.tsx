@@ -44,7 +44,7 @@ export function Calendar() {
 
   async function handleAccept(id: string) {
     const ok = await dialog.confirm(
-      "This will confirm the session and decline any other requests for the same time.",
+      "This confirms the session for this student. Other pending requests on this slot are left as they are — decline them separately if this slot is now full.",
       { title: "Accept this request?", confirmLabel: "Accept" },
     );
     if (!ok) return;

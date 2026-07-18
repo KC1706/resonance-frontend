@@ -320,20 +320,12 @@ export function withdrawRequest(id: string): void {
   if (appt && appt.status === "requested") { appt.status = "cancelled"; save(db); }
 }
 
-/** Accepting one request auto-declines every other pending request on the same slot — only one student can have it. */
+/** A slot can hold more than one confirmed student (e.g. a group session) — accepting one doesn't touch the others. */
 export function acceptAppointment(id: string): void {
   const db = load();
   const appt = db.appointments.find((a) => a.id === id);
   if (!appt) return;
   appt.status = "accepted";
-  const siblings = db.appointments.filter(
-    (a) => a.id !== id && a.counsellorId === appt.counsellorId && a.startIso === appt.startIso && a.status === "requested",
-  );
-  for (const sibling of siblings) {
-    sibling.status = "declined";
-    sibling.reason = "This time was given to another student";
-    postAutoMessage(db, sibling, "counsellor", sibling.reason);
-  }
   save(db);
 }
 
