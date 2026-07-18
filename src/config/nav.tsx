@@ -1,5 +1,5 @@
 import {
-  Home, AudioLines, FileText, UserRound, Users,
+  Home, AudioLines, Users,
   CalendarDays, NotebookPen, Sparkles,
   MessageCircle, Briefcase,
   type LucideIcon,
@@ -29,8 +29,6 @@ export const PERSONAS: Record<PersonaId, Persona> = {
     nav: [
       { to: "/counsellor", label: "Home / Today", icon: Home },
       { to: "/counsellor/cockpit", label: "Live Cockpit", icon: AudioLines, live: true },
-      { to: "/counsellor/review", label: "Post-Session Review", icon: FileText },
-      { to: "/counsellor/profile", label: "Student Profile", icon: UserRound },
       { to: "/counsellor/caseload", label: "Caseload", icon: Users },
       { to: "/counsellor/calendar", label: "Calendar", icon: CalendarDays },
       { to: "/counsellor/messages", label: "Messages", icon: MessageCircle },
