@@ -1,7 +1,7 @@
-# Resonance Design System — "Industry" (retained)
+# campusOS Design System — "Industry" (retained)
 
 The frontend keeps the **original prototype design system** — the "Industry"
-blueprint kit — unchanged. The look is identical to `Resonance.dc.html`; only the
+blueprint kit — unchanged. The look is identical to `campusOS.dc.html`; only the
 implementation moved from a single HTML file to modular React.
 
 > Design decision: an earlier pass modernised this into a warmer "Calm Instrument"

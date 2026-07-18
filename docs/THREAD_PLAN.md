@@ -1,4 +1,4 @@
-# THREAD_PLAN — building the Resonance frontend by steel thread
+# THREAD_PLAN — building the campusOS frontend by steel thread
 
 *The companion the engineering docs point to: what to build, in what order, why.*
 
@@ -18,7 +18,7 @@ a **demo of a loop** (product plan §10), so each thread is a demoable vertical 
 ordered by the specs' own competition priorities.
 
 **Design note:** the frontend keeps the **original "Industry" blueprint design**
-unchanged (see `DESIGN_SYSTEM.md`) — the port reproduces `Resonance.dc.html`
+unchanged (see `DESIGN_SYSTEM.md`) — the port reproduces `campusOS.dc.html`
 pixel-for-pixel in modular React; it does not restyle it.
 
 ## Status

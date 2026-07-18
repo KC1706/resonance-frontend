@@ -62,7 +62,7 @@ this build phase:
 - **Seed accounts.** On first load, if no accounts exist in storage, seed a
   fixed demo roster: a few counsellor accounts (each with an assigned
   caseload) and a few student accounts (each assigned to one counsellor).
-  Plain dummy email/password (e.g. `counsellor1@resonance.demo` /
+  Plain dummy email/password (e.g. `counsellor1@campusos.demo` /
   `demo1234`) — clearly labelled as demo-only, never a pattern to carry into
   a real build.
 - **Sign-up (demo convenience).** A student can also self-register a new

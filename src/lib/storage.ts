@@ -2,7 +2,7 @@
  * Thin, typed localStorage wrapper. Every key is namespaced so this app never
  * collides with anything else running on the same origin.
  */
-const PREFIX = "resonance:";
+const PREFIX = "campusos:";
 
 export function readJSON<T>(key: string, fallback: T): T {
   try {

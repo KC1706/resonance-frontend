@@ -1,11 +1,11 @@
-# Resonance — frontend
+# campusOS — frontend
 
 Conversation intelligence for high-stakes human talk: a force-multiplier for scarce
 campus counsellors, powered by a 662-facet psychometric model. One engine, four
 surfaces — **Counsellor · Student · Oversight · Commercial**.
 
 Built with **React + TypeScript + Vite + Tailwind**. The UI reproduces the original
-`Resonance.dc.html` prototype's **"Industry" blueprint design** exactly, rebuilt as
+`campusOS.dc.html` prototype's **"Industry" blueprint design** exactly, rebuilt as
 modular React (see `docs/DESIGN_SYSTEM.md`).
 
 ## Quick start
@@ -55,4 +55,4 @@ Safety and consent are constraints, not features: crisis routing is a fixed,
 human-reviewed card (never model output) and always reachable; the student surface
 never exposes a distress score; confidence/coverage is shown honestly.
 
-> Working name **Resonance** — placeholder, rename freely.
+> Working name **campusOS** — placeholder, rename freely.

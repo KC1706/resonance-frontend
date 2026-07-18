@@ -1,7 +1,7 @@
 # Conversation Intelligence for High-Stakes Human Talk
 ### Product, market & dashboard plan — IIT Kharagpur competition build
 
-*Working name: **Resonance** (placeholder — rename freely). Engine: the Ahoum 662-facet psychometric model. Primary track: campus counselling. Expansion: clinical + B2B commercial.*
+*Working name: **campusOS** (placeholder — rename freely). Engine: the Ahoum 662-facet psychometric model. Primary track: campus counselling. Expansion: clinical + B2B commercial.*
 
 ---
 

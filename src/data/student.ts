@@ -1,5 +1,5 @@
 /**
- * Demo data, ported from the Resonance.dc.html prototype. All fictional.
+ * Demo data, ported from the campusOS.dc.html prototype. All fictional.
  * A real build swaps this module for the API layer.
  */
 

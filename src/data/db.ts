@@ -124,15 +124,15 @@ const SLOT_MINUTES = 30;
 function seed(): Db {
   const now = new Date();
   const users: UserRecord[] = [
-    { id: "u-priya", role: "counsellor", email: "counsellor1@resonance.demo", password: "demo1234", name: "Priya Das" },
-    { id: "u-aarav", role: "student", email: "student1@resonance.demo", password: "demo1234", name: "Aarav M." },
-    { id: "u-rhea", role: "student", email: "student2@resonance.demo", password: "demo1234", name: "Rhea K." },
-    { id: "u-jia", role: "student", email: "student3@resonance.demo", password: "demo1234", name: "Jia P." },
-    { id: "u-dev", role: "student", email: "student4@resonance.demo", password: "demo1234", name: "Dev A." },
-    { id: "u-kabir", role: "student", email: "student5@resonance.demo", password: "demo1234", name: "Kabir N." },
-    { id: "u-sana", role: "student", email: "student6@resonance.demo", password: "demo1234", name: "Sana R." },
-    { id: "u-meera", role: "student", email: "student7@resonance.demo", password: "demo1234", name: "Meera S." },
-    { id: "u-ishaan", role: "student", email: "student8@resonance.demo", password: "demo1234", name: "Ishaan T." },
+    { id: "u-priya", role: "counsellor", email: "counsellor1@campusos.demo", password: "demo1234", name: "Priya Das" },
+    { id: "u-aarav", role: "student", email: "student1@campusos.demo", password: "demo1234", name: "Aarav M." },
+    { id: "u-rhea", role: "student", email: "student2@campusos.demo", password: "demo1234", name: "Rhea K." },
+    { id: "u-jia", role: "student", email: "student3@campusos.demo", password: "demo1234", name: "Jia P." },
+    { id: "u-dev", role: "student", email: "student4@campusos.demo", password: "demo1234", name: "Dev A." },
+    { id: "u-kabir", role: "student", email: "student5@campusos.demo", password: "demo1234", name: "Kabir N." },
+    { id: "u-sana", role: "student", email: "student6@campusos.demo", password: "demo1234", name: "Sana R." },
+    { id: "u-meera", role: "student", email: "student7@campusos.demo", password: "demo1234", name: "Meera S." },
+    { id: "u-ishaan", role: "student", email: "student8@campusos.demo", password: "demo1234", name: "Ishaan T." },
   ];
   const counsellors: CounsellorRecord[] = [
     { id: "c-priya", userId: "u-priya", initials: "PD", title: "Wellness Cell · IIT KGP" },

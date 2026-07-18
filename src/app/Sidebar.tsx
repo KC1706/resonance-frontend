@@ -36,7 +36,7 @@ export function Sidebar() {
             <path d="M2 12h3l2-7 4 18 3-11 2 4h6" />
           </svg>
           <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 20, letterSpacing: ".02em" }}>
-            RESONANCE
+            campusOS
           </span>
         </div>
         <div

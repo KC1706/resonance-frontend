@@ -1,9 +1,9 @@
 {
-  "name": "resonance-frontend",
+  "name": "campusos-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Resonance — conversation intelligence for campus counselling. React + Vite + Tailwind frontend.",
+  "description": "campusOS — conversation intelligence for campus counselling. React + Vite + Tailwind frontend.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
