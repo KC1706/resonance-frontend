@@ -3,6 +3,8 @@ import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { useAppData } from "@/context/AppDataContext";
 import { updateStudentSkills, getStudentById } from "@/data/db";
 import { fetchHackathons, matchingThemes, type Hackathon } from "@/data/devpost";
+import { fetchHnJobs, type HnJob } from "@/data/hackernews";
+import { formatRelative } from "@/lib/dates";
 
 /**
  * Live hackathons from Devpost, matched to what you've told us about yourself —
@@ -39,6 +41,27 @@ export function StudentOpportunities() {
     .map((h) => ({ h, matched: matchingThemes(h, tags) }))
     .sort((a, b) => b.matched.length - a.matched.length);
 
+  // Jobs from Hacker News' Firebase API (YC startups) — CORS-enabled, fetched direct.
+  const [jobs, setJobs] = useState<HnJob[]>([]);
+  const [jobsLive, setJobsLive] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    fetchHnJobs()
+      .then((res) => {
+        if (!alive) return;
+        setJobs(res.jobs);
+        setJobsLive(res.live);
+      })
+      .finally(() => alive && setLoadingJobs(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const jobMatches = (title: string) => tags.some((t) => title.toLowerCase().includes(t.toLowerCase()));
+
   function addTag() {
     if (!student || !newTag.trim()) return;
     updateStudentSkills(student.id, [...student.skills, newTag.trim()], student.domains);
@@ -60,7 +83,7 @@ export function StudentOpportunities() {
     <div style={{ maxWidth: 1000, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>Opportunities</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>
-        Live hackathons from Devpost — matched to your skills and interests only, never your session data.
+        Live hackathons from Devpost and jobs from Hacker News — matched to your skills and interests only, never your session data.
       </p>
 
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
@@ -138,8 +161,44 @@ export function StudentOpportunities() {
         </div>
       )}
 
+      {/* ── Jobs · from Hacker News (YC startups) ──────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "var(--space-8) 0 var(--space-3)" }}>
+        <h4 style={{ margin: 0 }}>Jobs</h4>
+        <Tag style={jobsLive ? { background: "var(--color-accent-100)", color: "var(--color-accent-800)" } : { background: "var(--color-neutral-100)", color: "var(--color-neutral-800)" }}>
+          {jobsLive ? "● live from Hacker News" : "from Hacker News"}
+        </Tag>
+        {!loadingJobs && <span className="text-muted" style={{ fontSize: 12 }}>{jobs.length} roles · YC startups</span>}
+      </div>
+
+      {loadingJobs ? (
+        <p className="text-muted" style={{ fontSize: 13 }}>Loading jobs from Hacker News…</p>
+      ) : jobs.length === 0 ? (
+        <p className="text-muted" style={{ fontSize: 13 }}>No jobs available right now.</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
+          {jobs.map((j) => {
+            const m = jobMatches(j.title);
+            return (
+              <Blueprint key={j.id} style={{ padding: "var(--space-4)", background: m ? "color-mix(in srgb, var(--color-accent) 8%, transparent)" : "transparent" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <h4 style={{ margin: 0, fontSize: 15, lineHeight: 1.25 }}>{j.title}</h4>
+                  <Tag className="tag-outline">Job</Tag>
+                </div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  {j.by ? `posted by ${j.by}` : "Hacker News"}{j.time ? ` · ${formatRelative(new Date(j.time * 1000))}` : ""}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                  <span className="text-muted" style={{ fontSize: 11.5 }}>{m ? "Matches your interests" : "Hacker News · YC"}</span>
+                  <a href={j.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: 12.5, padding: "5px 12px" }}>View ↗</a>
+                </div>
+              </Blueprint>
+            );
+          })}
+        </div>
+      )}
+
       <p className="text-muted" style={{ fontSize: 11.5, marginTop: "var(--space-6)" }}>
-        Hackathons via Devpost's public API. Uses only your skills &amp; interests, never your session data.
+        Hackathons via Devpost's public API; jobs via the Hacker News (YC) API. Uses only your skills &amp; interests, never your session data.
       </p>
     </div>
   );
