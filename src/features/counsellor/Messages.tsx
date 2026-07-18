@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Blueprint, Kicker } from "@/components/Blueprint";
 import { ChatThread } from "@/components/ChatThread";
 import { useAppData } from "@/context/AppDataContext";
 import { listThreadsForCounsellor, getThread, sendMessage, getStudentName } from "@/data/db";
+import { usePoll } from "@/lib/usePoll";
 
 /**
  * Plain chat with an assigned student — for logistics and support, always
@@ -27,11 +28,11 @@ export function Messages() {
   });
   const activeStudentId = selectedId ?? threads[0]?.student.id ?? null;
   const activeStudent = threads.find((t) => t.student.id === activeStudentId)?.student;
-  const messages = useMemo(
-    () => (identity.recordId && activeStudentId ? getThread(activeStudentId, identity.recordId) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeStudentId, identity.recordId, threads.length],
-  );
+  // Read fresh every render (not memoized) so a send or a poll tick shows up immediately.
+  const messages = identity.recordId && activeStudentId ? getThread(activeStudentId, identity.recordId) : [];
+
+  // Stand-in for a real-time subscription: poll for anything new every 2s.
+  usePoll(() => forceRerender((n) => n + 1), 2000);
 
   function handleSend(text: string) {
     if (!identity.recordId || !activeStudentId) return;

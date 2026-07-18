@@ -59,3 +59,14 @@ export function greetingTimeOfDay(from: Date = new Date()): "morning" | "afterno
   if (h < 17) return "afternoon";
   return "evening";
 }
+
+export function isSameDay(a: Date, b: Date): boolean {
+  return a.toDateString() === b.toDateString();
+}
+
+/** "Today", "Yesterday", or "18 July 2026" — the chat date-divider vocabulary. */
+export function formatDayDivider(d: Date, from: Date = new Date()): string {
+  if (isSameDay(d, from)) return "Today";
+  if (isSameDay(d, daysAgo(1, from))) return "Yesterday";
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}

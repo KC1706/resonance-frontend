@@ -3,6 +3,7 @@ import { Blueprint } from "@/components/Blueprint";
 import { ChatThread } from "@/components/ChatThread";
 import { useAppData } from "@/context/AppDataContext";
 import { getThread, sendMessage } from "@/data/db";
+import { usePoll } from "@/lib/usePoll";
 
 /**
  * Chat with your counsellor, any time — booked session or not. This is a
@@ -11,6 +12,9 @@ import { getThread, sendMessage } from "@/data/db";
 export function StudentMessages() {
   const { identity } = useAppData();
   const [, forceRerender] = useState(0);
+
+  // Stand-in for a real-time subscription: poll for anything new every 2s.
+  usePoll(() => forceRerender((n) => n + 1), 2000);
 
   if (!identity.assignedCounsellorId || !identity.recordId) {
     return (
