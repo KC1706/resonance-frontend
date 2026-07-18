@@ -91,18 +91,6 @@ export interface MessageRecord {
   atIso: string;
 }
 
-export type OpportunityType = "internship" | "job" | "hackathon";
-
-export interface OpportunityRecord {
-  id: string;
-  title: string;
-  org: string;
-  type: OpportunityType;
-  tags: string[];
-  deadlineIso: string;
-  link: string;
-}
-
 interface Db {
   users: UserRecord[];
   counsellors: CounsellorRecord[];
@@ -110,7 +98,6 @@ interface Db {
   availability: AvailabilitySlot[];
   appointments: AppointmentRecord[];
   messages: MessageRecord[];
-  opportunities: OpportunityRecord[];
   journalEntries: JournalEntry[];
   checkins: CheckinEntry[];
 }
@@ -232,16 +219,7 @@ function seed(): Db {
     requestedAt("s-sana", 2, 14, 0),
   ];
 
-  const opportunities: OpportunityRecord[] = [
-    { id: "o-1", title: "Mechanical Design Intern", org: "Tata AutoComp", type: "internship", tags: ["Mechanical Design", "CAD"], deadlineIso: daysAgo(-21, now).toISOString(), link: "#" },
-    { id: "o-2", title: "Robotics Hackathon 2026", org: "IIT KGP Robotics Club", type: "hackathon", tags: ["Robotics", "Python"], deadlineIso: daysAgo(-10, now).toISOString(), link: "#" },
-    { id: "o-3", title: "Structural Analyst — Grad Trainee", org: "L&T Construction", type: "job", tags: ["Civil Engineering", "Structural Analysis"], deadlineIso: daysAgo(-30, now).toISOString(), link: "#" },
-    { id: "o-4", title: "Site Engineering Intern", org: "Shapoorji Pallonji", type: "internship", tags: ["Construction", "AutoCAD"], deadlineIso: daysAgo(-14, now).toISOString(), link: "#" },
-    { id: "o-5", title: "Software Intern — Data Tools", org: "Sprinklr", type: "internship", tags: ["Python"], deadlineIso: daysAgo(-18, now).toISOString(), link: "#" },
-    { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
-  ];
-
-  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [] };
+  return { users, counsellors, students, availability, appointments, messages, journalEntries: [], checkins: [] };
 }
 
 /** Fields added to the schema after some browsers already had this key cached — never crash on a stale shape. */
@@ -249,7 +227,6 @@ function backfill(db: Db): Db {
   db.availability ??= [];
   db.appointments ??= [];
   db.messages ??= [];
-  db.opportunities ??= [];
   db.journalEntries ??= [];
   db.checkins ??= [];
   return db;
@@ -623,16 +600,4 @@ export function listThreadsForCounsellor(counsellorId: string): Array<{ student:
     thread.sort((a, b) => a.atIso.localeCompare(b.atIso));
     return { student, last: thread.length ? thread[thread.length - 1] : null };
   }).sort((a, b) => (b.last?.atIso ?? "").localeCompare(a.last?.atIso ?? ""));
-}
-
-// ── Opportunities ────────────────────────────────────────────────────────────
-
-export function listOpportunities(): OpportunityRecord[] {
-  return load().opportunities;
-}
-
-/** Plain overlap count between a student's tags and an opportunity's tags — explainable, not a black box. */
-export function matchingTags(student: StudentRecord, opportunity: OpportunityRecord): string[] {
-  const studentTags = new Set([...student.skills, ...student.domains].map((t) => t.toLowerCase()));
-  return opportunity.tags.filter((t) => studentTags.has(t.toLowerCase()));
 }

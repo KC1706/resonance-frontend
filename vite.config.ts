@@ -14,5 +14,17 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    // Proxy Devpost's public API in dev so the browser can read it without CORS.
+    // In a static build there's no proxy, so the app falls back to the bundled
+    // snapshot (public/devpost-hackathons.json).
+    proxy: {
+      // Trailing slash so it only catches API calls, not static files like
+      // /hackathons-snapshot.json.
+      "/devpost/": {
+        target: "https://devpost.com",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/devpost/, ""),
+      },
+    },
   },
 });
