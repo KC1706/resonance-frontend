@@ -133,7 +133,7 @@ interface Db {
   sessions: SessionRecord[];
 }
 
-const DB_KEY = "db:v7";
+const DB_KEY = "db:v8";
 
 /** The Live Cockpit's scripted client (see features/counsellor/liveSession.ts) — a real student like any other. */
 export const LUCY_STUDENT_ID = "s-lucy";
@@ -264,6 +264,80 @@ function seed(): Db {
     acceptedAt(LUCY_STUDENT_ID, 0, 15, 30),
   ];
 
+  // Dummy per-student session write-ups — same shape a real completed Cockpit session
+  // produces (see applySessionToStudent), so every student's Profile page shows real,
+  // *different* history instead of all 8 sharing one identical template. Lucy is the
+  // only one who gets hers from an actual played recording, not seeded here.
+  function sessionAt(
+    studentId: string, dayOffset: number, index: number, firstSession: boolean,
+    themes: string[], keyMomentText: string, keyMomentTs: string,
+    readings: SessionRecord["readings"], note: string, sessionLabel: string,
+  ): SessionRecord {
+    return {
+      id: `sess-${crypto.randomUUID()}`, studentId, counsellorId: "c-priya",
+      atIso: daysAgo(-dayOffset, now).toISOString(),
+      sessionLabel, durationLabel: "40 min", firstSession, index, keyMomentTs, keyMomentText, themes, readings, note,
+    };
+  }
+  const sessions: SessionRecord[] = [
+    // Aarav — the fullest history: 4 sessions, index sliding 58 → 41 (matches his caseNote).
+    sessionAt("s-aarav", -42, 58, true, ["Academic anxiety"], "Intake — presenting with exam stress and early sleep disruption.", "—",
+      [{ arrow: "↑", name: "Academic stress", level: "moderate", tone: "watch", quote: "I can't stop thinking about the exam", ts: "—" }],
+      "Intake. 2nd-year mechanical engineering student, presenting with exam-related stress. Engaged, oriented to therapy.", "Session 1 · intake"),
+    sessionAt("s-aarav", -28, 51, false, ["Sleep", "Academic anxiety"], "Sleep worsening — waking most nights around 3am.", "—",
+      [{ arrow: "↑", name: "Sleep disruption", level: "high", tone: "watch", quote: "I keep lying awake", ts: "04:32" }],
+      "Follow-up. Sleep disruption now nightly. Academic stress unchanged.", "Session 2"),
+    sessionAt("s-aarav", -14, 47, false, ["Sleep", "Academic anxiety", "Family expectations"], "Withdrew after endsem results; parental pressure surfaced.", "—",
+      [{ arrow: "↑", name: "Family expectations", level: "high", tone: "watch", quote: "they expect a lot from me", ts: "—" }],
+      "Endsem results landed poorly. Withdrawing socially; named family expectations for the first time.", "Session 3"),
+    sessionAt("s-aarav", -3, 41, false, ["Sleep", "Academic anxiety", "Family expectations", "Hopelessness"], "“…so what's the point.” Passive hopelessness surfaced.", "27:14",
+      [{ arrow: "↓", name: "Self-worth", level: "low", tone: "esc", quote: "won't be enough anyway", ts: "27:14" }],
+      "S: Reports ongoing sleep disruption and rumination; discloses guilt toward parents and passive hopelessness. Denies intent/plan.\nA: Worsening low mood, hopelessness emergent — risk present, not imminent.\nP: Safety follow-up within 48h; sleep support.", "Session 4"),
+
+    sessionAt("s-jia", -20, 53, true, ["Academic pressure"], "Reports panic symptoms before viva voce exams.", "—",
+      [{ arrow: "↑", name: "Panic symptoms", level: "moderate", tone: "watch", quote: "my heart races before I go in", ts: "—" }],
+      "Intake. 3rd-year CSE student, panic symptoms specific to oral exams.", "Session 1 · intake"),
+    sessionAt("s-jia", -6, 44, false, ["Academic pressure", "Panic"], "Described a panic episode in detail before her last viva — racing heart, couldn't breathe.", "—",
+      [{ arrow: "↑", name: "Panic symptoms", level: "high", tone: "esc", quote: "I couldn't breathe outside the room", ts: "—" }],
+      "Panic episode intensifying. Discussed grounding techniques for next viva.", "Session 2"),
+
+    sessionAt("s-dev", -15, 52, true, ["Homesickness"], "First-year, far from home, reports missing family intensely.", "—",
+      [{ arrow: "↑", name: "Homesickness", level: "moderate", tone: "watch", quote: "I just want to go home", ts: "—" }],
+      "Intake. 1st-year physics student, pronounced homesickness since arriving on campus.", "Session 1 · intake"),
+    sessionAt("s-dev", -4, 46, false, ["Homesickness", "Isolation"], "Isolation increasing — stopped joining hostel mess group for meals.", "—",
+      [{ arrow: "↑", name: "Isolation", level: "moderate", tone: "watch", quote: "I just eat alone now", ts: "—" }],
+      "Withdrawal from peer group noted. Discussed one small step: one shared meal this week.", "Session 2"),
+
+    sessionAt("s-kabir", -21, 55, true, ["Down-trending"], "Down-trending since last check-in; hasn't booked a follow-up.", "—",
+      [{ arrow: "↓", name: "Engagement", level: "low", tone: "watch", quote: "not sure it's helping", ts: "—" }],
+      "Intake. 2nd-year EE student, ambivalent about continuing sessions.", "Session 1 · intake"),
+
+    sessionAt("s-sana", -21, 57, true, ["Attendance"], "Missed the last two scheduled sessions; reached only by outreach message.", "—",
+      [{ arrow: "↓", name: "Engagement", level: "low", tone: "watch", quote: "sorry, things got busy", ts: "—" }],
+      "Intake. 2nd-year chemistry student. Engagement inconsistent since.", "Session 1 · intake"),
+
+    sessionAt("s-rhea", -10, 67, true, ["Adjustment"], "First-year, settling into hostel life; some early homesickness.", "—",
+      [{ arrow: "↑", name: "Adjustment stress", level: "mild", tone: "watch", quote: "it's a lot of new people at once", ts: "—" }],
+      "Intake. 1st-year civil engineering student, normal adjustment stress.", "Session 1 · intake"),
+    sessionAt("s-rhea", -2, 71, false, ["Adjustment", "Improvement"], "Reports feeling more settled; joined a study group.", "—",
+      [{ arrow: "↑", name: "Social connection", level: "improving", tone: "watch", quote: "I found my people, I think", ts: "—" }],
+      "Clear improvement. Joined a study group, mood lifted.", "Session 2"),
+
+    sessionAt("s-meera", -12, 74, true, ["Career planning"], "Final-year student discussing post-grad plans and mild uncertainty.", "—",
+      [{ arrow: "↑", name: "Future uncertainty", level: "mild", tone: "watch", quote: "I don't know what's next yet", ts: "—" }],
+      "Intake. 4th-year aerospace student, steady, some post-grad-planning anxiety.", "Session 1 · intake"),
+    sessionAt("s-meera", -3, 76, false, ["Career planning"], "Feeling more confident about placement prospects.", "—",
+      [{ arrow: "↑", name: "Confidence", level: "improving", tone: "watch", quote: "I had a good interview this week", ts: "—" }],
+      "Continued steady improvement. Placement interviews going well.", "Session 2"),
+
+    sessionAt("s-ishaan", -18, 68, true, ["Maintenance"], "Routine check-in; stable mood, maintaining coping strategies.", "—",
+      [{ arrow: "↑", name: "Stability", level: "steady", tone: "watch", quote: "things have been pretty even", ts: "—" }],
+      "Intake. 3rd-year maths student, maintenance-level check-in.", "Session 1 · intake"),
+    sessionAt("s-ishaan", -5, 69, false, ["Maintenance"], "Continues to do well; no new concerns raised.", "—",
+      [{ arrow: "↑", name: "Stability", level: "steady", tone: "watch", quote: "nothing new to report, honestly", ts: "—" }],
+      "Stable. No new concerns. Maintenance cadence continues.", "Session 2"),
+  ];
+
   const opportunities: OpportunityRecord[] = [
     { id: "o-1", title: "Mechanical Design Intern", org: "Tata AutoComp", type: "internship", tags: ["Mechanical Design", "CAD"], deadlineIso: daysAgo(-21, now).toISOString(), link: "#" },
     { id: "o-2", title: "Robotics Hackathon 2026", org: "IIT KGP Robotics Club", type: "hackathon", tags: ["Robotics", "Python"], deadlineIso: daysAgo(-10, now).toISOString(), link: "#" },
@@ -273,7 +347,7 @@ function seed(): Db {
     { id: "o-6", title: "Smart India Hackathon", org: "Govt. of India", type: "hackathon", tags: ["Mechanical Design", "Robotics", "Python"], deadlineIso: daysAgo(-25, now).toISOString(), link: "#" },
   ];
 
-  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [], sessions: [] };
+  return { users, counsellors, students, availability, appointments, messages, opportunities, journalEntries: [], checkins: [], sessions };
 }
 
 /** Fields added to the schema after some browsers already had this key cached — never crash on a stale shape. */

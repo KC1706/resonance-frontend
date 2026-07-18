@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
 import { state, tierStyle, tierChipLabel, tierProseLabel } from "@/lib/state";
 import { formatRelative, formatWeekdayDate, formatClock } from "@/lib/dates";
+import { deriveProfileVisuals, deriveRadar, sessionDateLabel } from "@/lib/profileVisuals";
 import { useAppData } from "@/context/AppDataContext";
 import { useSession } from "@/context/SessionContext";
 import {
@@ -32,7 +33,7 @@ export function Profile() {
       // Cockpit's scripted intake) — show that instead of the shared demo template.
       if (row.student.id === LUCY_STUDENT_ID) {
         const latest = getLatestSessionForStudent(LUCY_STUDENT_ID);
-        if (latest) return <SessionProfile data={appData} result={{ themes: latest.themes }} />;
+        if (latest) return <SessionProfile result={{ themes: latest.themes }} />;
         return (
           <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
             <h2 style={{ margin: 0 }}>{row.name}</h2>
@@ -44,12 +45,12 @@ export function Profile() {
           </div>
         );
       }
-      return <CaseloadStudentProfile row={row} data={appData} />;
+      return <CaseloadStudentProfile row={row} sessions={listSessionsForStudent(row.student.id)} />;
     }
   }
 
   // Opened from a completed live session (Review → Add to profile) → session baseline.
-  if (result) return <SessionProfile data={appData} result={{ themes: result.themes }} />;
+  if (result) return <SessionProfile result={{ themes: result.themes }} />;
 
   // No context → nothing to show yet.
   return (
@@ -95,11 +96,13 @@ function ProfileHeader({
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   A caseload student's longitudinal profile. Header and story are real
-   per-student data; the trend / radar / domains are the shared demo template.
+   A caseload student's longitudinal profile. Header, story, and every chart
+   below are computed from this student's own caseNote + session history
+   (see lib/profileVisuals.ts) — each student gets their own shape, not a
+   template shared identically across all 8.
    ──────────────────────────────────────────────────────────────────────────── */
-function CaseloadStudentProfile({ row, data }: { row: CaseloadRow; data: ReturnType<typeof useAppData> }) {
-  const { trend, radar, domains, balance, profileThemes, sessions } = data;
+function CaseloadStudentProfile({ row, sessions }: { row: CaseloadRow; sessions: SessionRecord[] }) {
+  const { trend, radar, domains, balance, themes: profileThemes } = deriveProfileVisuals(row, sessions);
   const up = row.trendDelta > 0;
   const trendCol = up ? "var(--color-accent)" : row.trendDelta < 0 ? state.esc.fg : "var(--color-neutral-600)";
   return (
@@ -212,14 +215,26 @@ function CaseloadStudentProfile({ row, data }: { row: CaseloadRow; data: ReturnT
         <table className="table">
           <thead><tr><th>Session</th><th>Date</th><th>Index</th><th>What happened</th></tr></thead>
           <tbody>
-            {sessions.map((s) => (
-              <tr key={s.n} style={{ cursor: "pointer" }}>
-                <td style={{ fontFamily: "var(--font-heading)" }}>{s.n}</td>
-                <td>{s.date}</td>
-                <td><span style={{ fontFamily: "var(--font-heading)" }}>{s.idx}</span> <span style={{ fontSize: 11, color: s.dcol }}>{s.delta}</span></td>
-                <td style={{ fontSize: 12.5 }}>{s.moment} {s.risk && <Tag style={{ background: state.esc.bg, color: state.esc.fg, padding: "1px 6px" }}>flagged</Tag>}</td>
-              </tr>
-            ))}
+            {[...sessions].sort((a, b) => a.atIso.localeCompare(b.atIso)).map((s, i, ordered) => {
+              const prev = ordered[i - 1];
+              const delta = prev ? s.index - prev.index : null;
+              const flagged = s.readings.some((r) => r.tone === "esc");
+              return (
+                <tr key={s.id} style={{ cursor: "pointer" }}>
+                  <td style={{ fontFamily: "var(--font-heading)" }}>S{i + 1}</td>
+                  <td>{sessionDateLabel(s)}</td>
+                  <td>
+                    <span style={{ fontFamily: "var(--font-heading)" }}>{s.index}</span>
+                    {delta !== null && delta !== 0 && (
+                      <span style={{ fontSize: 11, marginLeft: 5, color: delta > 0 ? "var(--color-accent)" : state.esc.fg }}>
+                        {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 12.5 }}>{s.keyMomentText} {flagged && <Tag style={{ background: state.esc.bg, color: state.esc.fg, padding: "1px 6px" }}>flagged</Tag>}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </Blueprint>
@@ -231,8 +246,8 @@ function CaseloadStudentProfile({ row, data }: { row: CaseloadRow; data: ReturnT
    Lucy's real, session-derived profile — the one student whose data actually
    comes from a recorded, analyzed conversation instead of the demo template.
    ──────────────────────────────────────────────────────────────────────────── */
-function SessionProfile({ data, result }: { data: ReturnType<typeof useAppData>; result: { themes: string[] } }) {
-  const { radar } = data;
+function SessionProfile({ result }: { result: { themes: string[] } }) {
+  const radar = deriveRadar(LUCY_STUDENT_ID, PROFILE.index);
   const history = listSessionsForStudent(LUCY_STUDENT_ID);
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
