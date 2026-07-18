@@ -10,6 +10,10 @@ export interface Identity {
   firstName: string;
   initials: string;
   title: string; // institutional role line (counsellor) or dept/code line (student)
+  /** The CounsellorRecord/StudentRecord id (not the user id) — what db.ts functions expect. */
+  recordId: string | null;
+  /** Student only: their assigned counsellor's record id, or null if not yet matched. */
+  assignedCounsellorId: string | null;
 }
 
 export type AppData = typeof shared & typeof counsellorData & typeof studentData & {
@@ -30,7 +34,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const identity = useMemo<Identity>(() => {
     if (user?.role === "counsellor") {
       const profile = getCounsellorProfile(user.id);
-      return { name: user.name, firstName: user.name.split(" ")[0], initials: initialsOf(user.name), title: profile?.title ?? "Counsellor" };
+      return {
+        name: user.name, firstName: user.name.split(" ")[0], initials: initialsOf(user.name),
+        title: profile?.title ?? "Counsellor", recordId: profile?.id ?? null, assignedCounsellorId: null,
+      };
     }
     if (user?.role === "student") {
       const profile = getStudentProfile(user.id);
@@ -39,9 +46,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         firstName: user.name.split(" ")[0],
         initials: initialsOf(user.name),
         title: profile ? `${profile.code} · ${profile.dept}` : "Unassigned",
+        recordId: profile?.id ?? null,
+        assignedCounsellorId: profile?.assignedCounsellorId ?? null,
       };
     }
-    return { name: "", firstName: "", initials: "", title: "" };
+    return { name: "", firstName: "", initials: "", title: "", recordId: null, assignedCounsellorId: null };
   }, [user]);
 
   const value = useMemo<AppData>(

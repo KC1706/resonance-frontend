@@ -94,7 +94,7 @@ export function Sidebar() {
         </nav>
       )}
 
-      {/* Bottom: facet-engine badge + account */}
+      {/* Bottom: trust badge (plain-language, role-aware) + account */}
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
         <div className="blueprint" style={{ padding: "9px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
           <i className="corner tl" /><i className="corner tr" /><i className="corner bl" /><i className="corner br" />
@@ -103,10 +103,12 @@ export function Sidebar() {
               <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z" />
               <path d="m9 12 2 2 4-4" />
             </svg>
-            <span style={{ fontWeight: 500 }}>Facet engine live</span>
+            <span style={{ fontWeight: 500 }}>{active === "counsellor" ? "Analysis engine live" : "Your privacy, protected"}</span>
           </div>
           <div className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.4 }}>
-            662 facets → 5 dimensions. Every read carries a confidence weight.
+            {active === "counsellor"
+              ? "Reads real patterns in the conversation and says plainly when it isn't sure."
+              : "You decide what's recorded and shared — always, on every screen."}
           </div>
         </div>
         <div

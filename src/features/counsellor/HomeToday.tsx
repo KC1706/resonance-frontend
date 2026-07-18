@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { Blueprint, StatCard, Kicker, Tag } from "@/components/Blueprint";
-import { state } from "@/lib/state";
+import { state, tierStyle } from "@/lib/state";
 import { formatWeekdayDate, greetingTimeOfDay } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
+import { listAppointmentsForCounsellor } from "@/data/db";
 
 const tierTag = (tier: string) => {
   if (tier === "WATCH") return { background: state.watch.bg, color: state.watch.fg };
@@ -12,8 +13,14 @@ const tierTag = (tier: string) => {
 
 export function HomeToday() {
   const navigate = useNavigate();
-  const { homeStats, schedule, needsAttention, actions, identity } = useAppData();
+  const { homeStats, schedule, needsAttention, actions, identity, caseload } = useAppData();
   const today = new Date();
+
+  const counts = { high: 0, medium: 0, low: 0 };
+  for (const c of caseload) counts[c.T]++;
+  const pendingRequests = identity.recordId
+    ? listAppointmentsForCounsellor(identity.recordId).filter((a) => a.status === "requested").length
+    : 0;
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
       {/* Header */}
@@ -101,6 +108,27 @@ export function HomeToday() {
 
         {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <Blueprint style={{ padding: "var(--space-4)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+              <h4 style={{ margin: 0 }}>Your caseload at a glance</h4>
+              <button className="btn btn-secondary" style={{ fontSize: 11.5, padding: "4px 10px" }} onClick={() => navigate("/counsellor/caseload")}>See all</button>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              <Tag style={tierStyle("high")}>{counts.high} need attention soon</Tag>
+              <Tag style={tierStyle("medium")}>{counts.medium} keeping an eye on</Tag>
+              <Tag style={tierStyle("low")}>{counts.low} doing okay</Tag>
+            </div>
+            {pendingRequests > 0 && (
+              <div
+                onClick={() => navigate("/counsellor/calendar")}
+                style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)", fontSize: 13 }}
+              >
+                <span>{pendingRequests} booking {pendingRequests === 1 ? "request" : "requests"} waiting on you</span>
+                <span style={{ color: "var(--color-accent)" }}>Review →</span>
+              </div>
+            )}
+          </Blueprint>
+
           <Blueprint style={{ padding: "var(--space-4)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: "var(--space-3)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={state.esc.fg} strokeWidth="1.5"><path d="M12 3 2 20h20z" /><path d="M12 10v5M12 17.5v.01" /></svg>

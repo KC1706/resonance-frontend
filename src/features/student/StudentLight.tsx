@@ -1,29 +1,99 @@
+import { useState } from "react";
 import { Blueprint, Kicker, Tag } from "@/components/Blueprint";
+import { state } from "@/lib/state";
 import { useAppData } from "@/context/AppDataContext";
+import { getWeekSlots, requestAppointment, cancelAppointment, listAppointmentsForStudent } from "@/data/db";
+import { formatClock, formatWeekdayDate } from "@/lib/dates";
+
+const apptTag = (status: string) => {
+  if (status === "accepted") return { background: "var(--color-accent-100)", color: "var(--color-accent-800)" };
+  if (status === "requested") return { background: state.watch.bg, color: state.watch.fg };
+  return { background: "var(--color-neutral-100)", color: "var(--color-neutral-800)" };
+};
 
 export function StudentSessions() {
+  const { identity } = useAppData();
+  const [, forceRerender] = useState(0);
+
+  if (!identity.assignedCounsellorId || !identity.recordId) {
+    return (
+      <div style={{ maxWidth: 820, margin: "0 auto", padding: "var(--space-8)" }}>
+        <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My sessions</h1>
+        <Blueprint style={{ padding: "var(--space-4)", marginTop: "var(--space-4)" }}>
+          <p style={{ margin: 0, fontSize: 13.5 }}>You'll be matched with a counsellor soon — booking opens up once you are.</p>
+        </Blueprint>
+      </div>
+    );
+  }
+
+  const myAppointments = listAppointmentsForStudent(identity.recordId).filter((a) => a.status !== "cancelled" && a.status !== "declined");
+  const upcoming = myAppointments.filter((a) => new Date(a.startIso).getTime() > Date.now()).sort((a, b) => a.startIso.localeCompare(b.startIso));
+  const past = myAppointments.filter((a) => new Date(a.startIso).getTime() <= Date.now());
+  const days = getWeekSlots(identity.assignedCounsellorId);
+
+  function book(startIso: string) {
+    requestAppointment(identity.recordId!, identity.assignedCounsellorId!, startIso);
+    forceRerender((n) => n + 1);
+  }
+
+  function cancel(id: string) {
+    cancelAppointment(id);
+    forceRerender((n) => n + 1);
+  }
+
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "var(--space-8)" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "var(--space-8)" }}>
       <h1 style={{ margin: "0 0 4px", fontSize: 34 }}>My sessions</h1>
       <p className="text-muted" style={{ margin: "0 0 var(--space-6)", fontSize: 14 }}>Book, join, and set what's captured — your choice, every time.</p>
+
       <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <Kicker>Upcoming</Kicker>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-          <div>
-            <h4 style={{ margin: 0 }}>Thursday · 10:30 · Dr. Priya Das</h4>
-            <div className="text-muted" style={{ fontSize: 12 }}>Recording: your choice at start</div>
+        {upcoming.length === 0 && <p className="text-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>Nothing booked yet — pick a time below.</p>}
+        {upcoming.map((a) => (
+          <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: 14 }}>{formatWeekdayDate(new Date(a.startIso))} · {formatClock(new Date(a.startIso))} · Dr. Priya Das</h4>
+              <div className="text-muted" style={{ fontSize: 12 }}>Recording: your choice at start</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Tag style={apptTag(a.status)}>{a.status === "accepted" ? "Confirmed" : "Waiting on counsellor"}</Tag>
+              <button className="btn btn-secondary" onClick={() => cancel(a.id)}>Cancel</button>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-primary">Join</button>
-            <button className="btn btn-secondary">Reschedule</button>
-          </div>
+        ))}
+      </Blueprint>
+
+      <Blueprint style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+        <Kicker>Book a time</Kicker>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 }}>
+          {Object.entries(days).map(([dayKey, slots]) => (
+            <div key={dayKey}>
+              <div className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{formatWeekdayDate(new Date(dayKey)).split(" · ")[0].slice(0, 3)} {new Date(dayKey).getDate()}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {slots.map((slot) => (
+                  <button
+                    key={slot.startIso}
+                    className="btn btn-secondary"
+                    disabled={slot.status !== "free"}
+                    onClick={() => book(slot.startIso)}
+                    style={{ fontSize: 11.5, padding: "4px 2px", opacity: slot.status === "free" ? 1 : 0.4 }}
+                  >
+                    {formatClock(new Date(slot.startIso))}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </Blueprint>
+
       <Blueprint style={{ padding: "var(--space-4)" }}>
         <Kicker>Past</Kicker>
-        {[["25 Mar · Session 4", "notes only"], ["11 Mar · Session 3", "full session"]].map(([a, b]) => (
-          <div key={a} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)", fontSize: 13 }}>
-            <span>{a}</span><span className="text-muted">{b}</span>
+        {past.length === 0 && <p className="text-muted" style={{ fontSize: 13, margin: "8px 0 0" }}>No past sessions yet.</p>}
+        {past.map((a) => (
+          <div key={a.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid color-mix(in srgb, var(--color-text) 8%, transparent)", fontSize: 13 }}>
+            <span>{formatWeekdayDate(new Date(a.startIso))} · {formatClock(new Date(a.startIso))}</span>
+            <span className="text-muted">{a.status}</span>
           </div>
         ))}
       </Blueprint>

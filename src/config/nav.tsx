@@ -1,6 +1,7 @@
 import {
   Home, AudioLines, FileText, UserRound, Upload, Users,
   LifeBuoy, CalendarDays, NotebookPen, Sparkles, BookOpen, ShieldCheck,
+  MessageCircle, Briefcase,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,8 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       { to: "/counsellor/profile", label: "Student Profile", icon: UserRound },
       { to: "/counsellor/upload", label: "Upload & Analyze", icon: Upload },
       { to: "/counsellor/caseload", label: "Caseload", icon: Users },
+      { to: "/counsellor/calendar", label: "Calendar", icon: CalendarDays },
+      { to: "/counsellor/messages", label: "Messages", icon: MessageCircle },
     ],
   },
   student: {
@@ -42,8 +45,10 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       { to: "/student", label: "Home", icon: Home },
       { to: "/student/help", label: "Get help now", icon: LifeBuoy },
       { to: "/student/sessions", label: "My sessions", icon: CalendarDays },
+      { to: "/student/messages", label: "Messages", icon: MessageCircle },
       { to: "/student/checkin", label: "Check-in & journal", icon: NotebookPen },
       { to: "/student/progress", label: "My progress", icon: Sparkles },
+      { to: "/student/opportunities", label: "Opportunities", icon: Briefcase },
       { to: "/student/resources", label: "Resources", icon: BookOpen },
       { to: "/student/data", label: "My data & consent", icon: ShieldCheck },
     ],

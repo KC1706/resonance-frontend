@@ -10,6 +10,7 @@ export function LiveCockpit() {
   const [minimal, setMinimal] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [sec, setSec] = useState(42 * 60 + 14);
+  const [hasHistory, setHasHistory] = useState(true); // toggled here for demo — a real build reads this from whether the student has prior sessions (docs/V2_Platform_Plan.md §4)
   const scrollRef = useRef<HTMLDivElement>(null);
   const crisis = true; // hopelessness surfaced in this scripted moment
 
@@ -40,12 +41,21 @@ export function LiveCockpit() {
           <div style={{ width: 30, height: 30, border: "1px solid var(--color-divider)", display: "grid", placeItems: "center", fontFamily: "var(--font-heading)", fontSize: 12 }}>AM</div>
           <div style={{ lineHeight: 1.2 }}>
             <div style={{ fontSize: 13, fontWeight: 500 }}>Aarav M. · A-238</div>
-            <div className="text-muted" style={{ fontSize: 11 }}>Session 4 · English + Hindi</div>
+            <div className="text-muted" style={{ fontSize: 11 }}>{hasHistory ? "Session 4 · English + Hindi" : "Session 1 · intake · English + Hindi"}</div>
           </div>
         </div>
         <Tag className="tag-accent" style={{ display: "flex", gap: 5, alignItems: "center" }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5" /></svg>Consent active
         </Tag>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ fontSize: 11, padding: "4px 9px" }}
+          onClick={() => setHasHistory((v) => !v)}
+          title="Demo toggle — simulates a first-time conversation vs. one with history"
+        >
+          {hasHistory ? "Viewing: returning student" : "Viewing: first conversation"}
+        </button>
         <span style={{ fontFamily: "var(--font-heading)", fontSize: 15, marginLeft: "auto" }}>{clock}</span>
         <div style={{ width: 1, height: 20, background: "var(--color-divider)" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 11px", border: `1px solid ${state.watch.bd}`, background: state.watch.bg }}>
@@ -102,6 +112,14 @@ export function LiveCockpit() {
 
         {/* Guidance / insight (hero) */}
         <div className="scroll" style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: "var(--space-4)", minHeight: 0, background: "color-mix(in srgb, var(--color-text) 2%, transparent)" }}>
+          {!hasHistory && (
+            <Blueprint style={{ padding: "12px var(--space-4)", background: "var(--color-neutral-100)" }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>First conversation with this student</div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                There's no history to compare against yet. Live reads below still work — they just won't say what's changed.
+              </div>
+            </Blueprint>
+          )}
           {crisis && (
             <Blueprint style={{ padding: "var(--space-4)", border: "1.5px solid #c0392b", background: state.esc.bg }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -126,7 +144,11 @@ export function LiveCockpit() {
 
           <Blueprint style={{ padding: "var(--space-4)" }}>
             <Kicker style={{ margin: "0 0 6px" }}>What the student is thinking</Kicker>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>{cockpit.thinking}</p>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+              {hasHistory
+                ? cockpit.thinking
+                : "Carrying hopelessness about academics and worn down by lost sleep, from what's come up so far today. No past sessions to draw on yet — this reading is from today only."}
+            </p>
           </Blueprint>
 
           <Blueprint elev="sm" style={{ padding: "var(--space-4)", borderLeft: "3px solid var(--color-accent)" }}>
@@ -143,20 +165,25 @@ export function LiveCockpit() {
 
           <Blueprint style={{ padding: "var(--space-4)", borderLeft: `3px solid ${state.watch.fg}` }}>
             <Kicker style={{ margin: "0 0 6px", color: state.watch.fg }}>Avoid</Kicker>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>{cockpit.avoid}</p>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+              {hasHistory ? cockpit.avoid : "Avoid reassuring too early — it can feel dismissive before you've heard the full picture."}
+            </p>
           </Blueprint>
 
           <Blueprint style={{ padding: "var(--space-4)" }}>
-            <Kicker style={{ margin: "0 0 10px" }}>Facet signals · live</Kicker>
+            <Kicker style={{ margin: "0 0 10px" }}>What's coming up · live</Kicker>
             {liveFacets.map((f) => (
               <div key={f.n} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 15, width: 16, color: f.col }}>{f.arrow}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 15, width: 16, color: f.col }}>{hasHistory ? f.arrow : "•"}</span>
                 <span style={{ fontSize: 13, width: 150 }}>{f.n}</span>
                 <div style={{ flex: 1, height: 6, background: "color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
                   <div style={{ height: "100%", width: `${f.int}%`, background: f.col }} />
                 </div>
               </div>
             ))}
+            {!hasHistory && (
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>First reading — no earlier session to show a trend against yet.</div>
+            )}
           </Blueprint>
         </div>
 
@@ -190,12 +217,12 @@ export function LiveCockpit() {
             </Blueprint>
 
             <Blueprint style={{ padding: "var(--space-4)" }}>
-              <Kicker style={{ margin: "0 0 6px" }}>Coverage this session</Kicker>
+              <Kicker style={{ margin: "0 0 6px" }}>How much we can go on</Kicker>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
                 <span style={{ fontFamily: "var(--font-heading)", fontSize: 28 }}>{cockpit.coverage}%</span>
-                <span className="text-muted" style={{ fontSize: 11.5 }}>facets with data</span>
+                <span className="text-muted" style={{ fontSize: 11.5 }}>of what we track has enough data</span>
               </div>
-              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>BODY &amp; SOUL still thin — index held honest.</div>
+              <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Body and sense-of-purpose areas are still thin — we're not guessing there.</div>
             </Blueprint>
           </div>
         )}

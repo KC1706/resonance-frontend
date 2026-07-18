@@ -8,9 +8,13 @@ import { Review } from "@/features/counsellor/Review";
 import { Profile } from "@/features/counsellor/Profile";
 import { Upload } from "@/features/counsellor/Upload";
 import { Caseload } from "@/features/counsellor/Caseload";
+import { Calendar } from "@/features/counsellor/Calendar";
+import { Messages } from "@/features/counsellor/Messages";
 import { StudentHome } from "@/features/student/StudentHome";
 import { StudentHelp } from "@/features/student/StudentHelp";
 import { StudentData } from "@/features/student/StudentData";
+import { StudentMessages } from "@/features/student/StudentMessages";
+import { StudentOpportunities } from "@/features/student/StudentOpportunities";
 import {
   StudentSessions, StudentCheckin, StudentProgress, StudentResources,
 } from "@/features/student/StudentLight";
@@ -33,13 +37,17 @@ export const router = createBrowserRouter([
           { path: "counsellor/profile", element: <Profile /> },
           { path: "counsellor/upload", element: <Upload /> },
           { path: "counsellor/caseload", element: <Caseload /> },
+          { path: "counsellor/calendar", element: <Calendar /> },
+          { path: "counsellor/messages", element: <Messages /> },
 
           // Student
           { path: "student", element: <StudentHome /> },
           { path: "student/help", element: <StudentHelp /> },
           { path: "student/sessions", element: <StudentSessions /> },
+          { path: "student/messages", element: <StudentMessages /> },
           { path: "student/checkin", element: <StudentCheckin /> },
           { path: "student/progress", element: <StudentProgress /> },
+          { path: "student/opportunities", element: <StudentOpportunities /> },
           { path: "student/resources", element: <StudentResources /> },
           { path: "student/data", element: <StudentData /> },
 
