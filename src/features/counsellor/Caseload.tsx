@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Blueprint, Tag } from "@/components/Blueprint";
-import { state, tierStyle } from "@/lib/state";
+import { state, tierStyle, tierChipLabel } from "@/lib/state";
 import { formatRelative, formatUpcoming } from "@/lib/dates";
 import { useAppData } from "@/context/AppDataContext";
-import { getCaseloadForCounsellor } from "@/data/db";
-
-const TIER_LABEL = { high: "HIGH", medium: "MED", low: "LOW" } as const;
+import { getCaseloadForCounsellor, listSessionsForStudent } from "@/data/db";
 
 export function Caseload() {
   const navigate = useNavigate();
@@ -48,6 +46,7 @@ export function Caseload() {
             {filtered.map((r) => {
               const trendColor = r.trendDelta > 0 ? "var(--color-accent)" : r.trendDelta < 0 ? state.esc.fg : "var(--color-neutral-600)";
               const trendLabel = r.trendDelta === 0 ? "—" : `${r.trendDelta > 0 ? "▲" : "▼"}${Math.abs(r.trendDelta)}`;
+              const hasRealSessions = listSessionsForStudent(r.student.id).length > 0;
               return (
                 <tr
                   key={r.student.id}
@@ -55,10 +54,15 @@ export function Caseload() {
                   style={{ cursor: "pointer" }}
                 >
                   <td>
-                    <div style={{ fontWeight: 500 }}>{r.name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontWeight: 500 }}>{r.name}</span>
+                      {hasRealSessions && (
+                        <span title="Has a recorded, analyzed session" style={{ fontSize: 10.5, color: "var(--color-accent)" }}>●</span>
+                      )}
+                    </div>
                     <div className="text-muted" style={{ fontSize: 11 }}>{r.student.code} · {r.student.dept}</div>
                   </td>
-                  <td><Tag style={tierStyle(r.tier)}>{TIER_LABEL[r.tier]}</Tag></td>
+                  <td><Tag style={tierStyle(r.tier)}>{tierChipLabel(r.tier)}</Tag></td>
                   <td style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>{r.wellnessIndex}</td>
                   <td style={{ color: trendColor, fontFamily: "var(--font-heading)" }}>{trendLabel}</td>
                   <td style={{ fontSize: 12.5 }} className="text-muted">{r.reason}</td>
