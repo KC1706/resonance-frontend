@@ -95,7 +95,7 @@ interface Db {
   opportunities: OpportunityRecord[];
 }
 
-const DB_KEY = "db:v4";
+const DB_KEY = "db:v5";
 
 /** Starting hours so the calendar isn't empty on first login — the counsellor edits from here. */
 const DEFAULT_DAILY_SLOT_TIMES: Array<[number, number]> = [[10, 0], [11, 30], [14, 0], [15, 30]];
@@ -177,25 +177,39 @@ function seed(): Db {
   }
 
   // Real appointments so "today's schedule," "last seen," and "next" are all computed, not authored strings.
-  function acceptedAt(studentId: string, dayOffset: number, hh: number, mm: number): AppointmentRecord {
+  function appointmentAt(studentId: string, dayOffset: number, hh: number, mm: number, status: AppointmentStatus): AppointmentRecord {
     const start = new Date(now);
     start.setDate(start.getDate() + dayOffset);
     start.setHours(hh, mm, 0, 0);
     const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
-    return { id: `appt-${crypto.randomUUID()}`, studentId, counsellorId: "c-priya", startIso: start.toISOString(), endIso: end.toISOString(), status: "accepted" };
+    return { id: `appt-${crypto.randomUUID()}`, studentId, counsellorId: "c-priya", startIso: start.toISOString(), endIso: end.toISOString(), status };
   }
+  const acceptedAt = (studentId: string, dayOffset: number, hh: number, mm: number) => appointmentAt(studentId, dayOffset, hh, mm, "accepted");
+  const requestedAt = (studentId: string, dayOffset: number, hh: number, mm: number) => appointmentAt(studentId, dayOffset, hh, mm, "requested");
+
   // Times deliberately match DEFAULT_DAILY_SLOT_TIMES so these show up in the Calendar's slot grid too.
   const appointments: AppointmentRecord[] = [
-    acceptedAt("s-aarav", 0, 10, 0),     // today
-    acceptedAt("s-rhea", 0, 11, 30),     // today
-    acceptedAt("s-ishaan", 0, 14, 0),    // today
-    acceptedAt("s-meera", 0, 15, 30),    // today
-    acceptedAt("s-jia", -2, 10, 0),      // 2 days ago
-    acceptedAt("s-jia", 4, 11, 30),      // upcoming, this week
-    acceptedAt("s-dev", -5, 14, 0),      // 5 days ago
+    // Today
+    acceptedAt("s-aarav", 0, 10, 0),
+    acceptedAt("s-rhea", 0, 11, 30),
+    acceptedAt("s-ishaan", 0, 14, 0),
+    acceptedAt("s-meera", 0, 15, 30),
+    // Past, so "last seen" is real
+    acceptedAt("s-jia", -2, 10, 0),
+    acceptedAt("s-dev", -5, 14, 0),
     acceptedAt("s-kabir", -21, 10, 0),   // 3 weeks ago, nothing booked since
     acceptedAt("s-sana", -21, 11, 30),   // 3 weeks ago, missed since
     acceptedAt("s-ishaan", -6, 15, 30),  // an older session too, for history depth
+    // Rest of the week, so the calendar isn't only busy today
+    acceptedAt("s-jia", 4, 11, 30),
+    acceptedAt("s-rhea", 2, 11, 30),
+    acceptedAt("s-meera", 3, 10, 0),
+    acceptedAt("s-ishaan", 5, 14, 0),
+    // Pending requests waiting on the counsellor — including two on the same slot,
+    // since a slot can take more than one confirmed student (see Calendar.tsx).
+    requestedAt("s-dev", 1, 10, 0),
+    requestedAt("s-kabir", 1, 10, 0),
+    requestedAt("s-sana", 2, 14, 0),
   ];
 
   const opportunities: OpportunityRecord[] = [
