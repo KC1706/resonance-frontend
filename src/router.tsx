@@ -12,6 +12,7 @@ import { Messages } from "@/features/counsellor/Messages";
 import { StudentHome } from "@/features/student/StudentHome";
 import { StudentMessages } from "@/features/student/StudentMessages";
 import { StudentOpportunities } from "@/features/student/StudentOpportunities";
+import { StudentRoadmaps } from "@/features/student/StudentRoadmaps";
 import {
   StudentSessions, StudentCheckin, StudentProgress,
 } from "@/features/student/StudentLight";
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
           { path: "student/checkin", element: <StudentCheckin /> },
           { path: "student/progress", element: <StudentProgress /> },
           { path: "student/opportunities", element: <StudentOpportunities /> },
+          { path: "student/roadmaps", element: <StudentRoadmaps /> },
           // Retired screens folded into Home / My progress — keep old links from 404ing.
           { path: "student/help", element: <Navigate to="/student" replace /> },
           { path: "student/resources", element: <Navigate to="/student/progress" replace /> },

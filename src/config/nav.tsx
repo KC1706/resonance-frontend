@@ -1,7 +1,7 @@
 import {
   Home, AudioLines, Users,
   CalendarDays, NotebookPen, Sparkles,
-  MessageCircle, Briefcase,
+  MessageCircle, Briefcase, Map,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +45,7 @@ export const PERSONAS: Record<PersonaId, Persona> = {
       { to: "/student/checkin", label: "Check-in & journal", icon: NotebookPen },
       { to: "/student/progress", label: "My progress", icon: Sparkles },
       { to: "/student/opportunities", label: "Opportunities", icon: Briefcase },
+      { to: "/student/roadmaps", label: "Roadmaps", icon: Map },
     ],
   },
 };
